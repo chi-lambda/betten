@@ -31,8 +31,11 @@ $(document).ready(function(){
             applicableBeds: function() {
                 if (this.newPatient.sk) {
                     let v = this;
-                    return this.beds.filter(b => b.treatmentType.title == v.newPatient.sk)[0].beds;
+                    return this.beds.filter(b => b.treatmentType.title == v.newPatient.sk)[0].beds.filter(b => !b.occupied);
                 }
+            },
+            haveBeds: function() {
+                return this.beds.length > 0
             }
         },
         methods: {
@@ -47,6 +50,10 @@ $(document).ready(function(){
             },
             openTab: function(tabName) {
                 this.currentTab = tabName
+            },
+            colorForPatient: function(patient) {
+                if (patient.discharge != null && patient.discharge != '') { return '' }
+                return this.treatmentTypes.filter(tt => tt.title = patient.sk)[0].color;
             }
         },
         watch: {
@@ -56,7 +63,6 @@ $(document).ready(function(){
                     for (var i = this.beds.length - 1; i >= 0; i--) {
                         for (var j = this.beds[i].beds.length - 1; j >= 0; j--) {
                             let bed = this.beds[i].beds[j]
-                            console.log(bed)
                             this.beds[i].beds[j].occupied = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.title)
                         }
                     }
@@ -64,6 +70,12 @@ $(document).ready(function(){
             }
         }
         })
+    window.addEventListener('beforeunload', function (e) {
+        // Cancel the event
+        e.preventDefault();
+        // Chrome requires returnValue to be set
+        e.returnValue = '';
+    });
 });
 //v.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == t.bedtype + " " + (i + 1))
 </script>
@@ -72,8 +84,8 @@ $(document).ready(function(){
 
     <div class="w3-bar w3-black">
         <button class="w3-bar-item w3-button" v-on:click="openTab('data')">Daten</button>
-        <button class="w3-bar-item w3-button" v-on:click="openTab('uhs')">UHS Belegung</button>
-        <button class="w3-bar-item w3-button" v-on:click="openTab('patients')">Patienten</button>
+        <button class="w3-bar-item w3-button" v-on:click="openTab('uhs')" v-if="haveBeds">UHS Belegung</button>
+        <button class="w3-bar-item w3-button" v-on:click="openTab('patients')" v-if="haveBeds">Patienten</button>
     </div> 
     <div id="data" v-show="currentTab == 'data'" class="w3-container">
         <div class="w3-half">
@@ -90,14 +102,14 @@ $(document).ready(function(){
             <table class="w3-table">
                 <tr v-for="m in treatmentTypes" v-bind:class="m.color">
                     <td>{{ m.title }}:</td>
-                    <td><input class="w3-input" type="text" v-model="m.count"></td>
+                    <td><input class="w3-input" type="text" v-model="m.count" v-if="!haveBeds">{{ haveBeds ? m.count : '' }}</td>
                 </tr>
                 <tr>
                     <td>Gesamt</td>
                     <td>{{ treatmentTypes.map(x=>x.count|0).reduce((x,y) => x+y) }}</td>
                 </tr>
             </table>
-            <button v-on:click="generateBeds()" class="w3-button w3-green">Betten erstellen</button>
+            <button v-on:click="generateBeds()" class="w3-button w3-gray" v-if="!haveBeds">Betten erstellen</button>
         </div>
     </div>
     <div id="uhs" v-show="currentTab == 'uhs'">
@@ -136,15 +148,15 @@ $(document).ready(function(){
                     <td>{{ patient.firstName }}</td>
                     <td>{{ patient.gender }}</td>
                     <td>{{ patient.birth }}</td>
-                    <td>{{ patient.sk }}</td>
+                    <td v-bind:class="colorForPatient(patient)">{{ patient.sk }}</td>
                     <td>{{ patient.discipline }}</td>
-                    <td>{{ patient.bed }}</td>
+                    <td v-bind:class="colorForPatient(patient)">{{ patient.bed }}</td>
                     <td>{{ patient.admission }}</td>
                     <td><input class="w3-input" type="text" v-model="patient.discharge" /></td>
                     <td>{{ patient.dischargedBy }}</td>
                 </tr>
                 <tr>
-                    <td>{{ newPatient.id }}</td>
+                    <td><button v-on:click="addPatient()" class="w3-button w3-green">+</button></td>
                     <td><input class="w3-input" type="text" v-model="newPatient.name" /></td>
                     <td><input class="w3-input" type="text" v-model="newPatient.firstName" /></td>
                     <td><input class="w3-input" type="text" v-model="newPatient.gender" /></td>
@@ -162,6 +174,5 @@ $(document).ready(function(){
                 </tr>
             </tbody>
         </table>
-        <button v-on:click="addPatient()">Patient hinzufügen</button>
     </div>
 </div>
