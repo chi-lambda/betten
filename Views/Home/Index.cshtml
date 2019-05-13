@@ -15,7 +15,7 @@ $(document).ready(function(){
                 {title: "Datum", content: ""},
                 {title: "Stationsleitung", content: ""},
                 {title: "Medizinischer Leiter/(Not-)Arzt", content: ""},
-                {title: "Dokumentationsverantwortliche/r", content: ""},
+                {title: "Dokumentations&shy;verantwortliche/r", content: ""},
             ],
             treatmentTypes: [
                 {title: "SK1-Rot", color: 'w3-red', count: 2, bedtype: "Schockplatz"},
@@ -54,6 +54,11 @@ $(document).ready(function(){
             colorForPatient: function(patient) {
                 if (patient.discharge != null && patient.discharge != '') { return '' }
                 return this.treatmentTypes.filter(tt => tt.title = patient.sk)[0].color;
+            },
+            patientForBed: function(bed) {
+                let patients = this.patients.filter(p => p.bed == bed.title && (p.discharge == null || p.discharge == ''));
+                if (patients.length > 0) { return patients[0]; }
+                return {id: ''};
             }
         },
         watch: {
@@ -90,16 +95,16 @@ $(document).ready(function(){
     <div id="data" v-show="currentTab == 'data'" class="w3-container">
         <div class="w3-half">
             <h1>Einsatzdaten</h1>
-            <table>
+            <table class="w3-card-4 w3-table">
                 <tr v-for="info in infos">
-                    <td>{{ info.title }}:</td>
+                    <td v-html="info.title + ':'"></td>
                     <td><input class="w3-input" type="text" v-model="info.content"></td>
                 </tr>
             </table>
         </div>
         <div class="w3-container w3-half">
             <h2>Betten</h2>
-            <table class="w3-table">
+            <table class="w3-table w3-card-4">
                 <tr v-for="m in treatmentTypes" v-bind:class="m.color">
                     <td>{{ m.title }}:</td>
                     <td><input class="w3-input" type="text" v-model="m.count" v-if="!haveBeds">{{ haveBeds ? m.count : '' }}</td>
@@ -119,15 +124,16 @@ $(document).ready(function(){
                 <tr v-for="b2 in b.beds">
                     <td v-bind:class="b2.treatmentType.color">{{ b2.title }}</td>
                     <td>{{ b2.occupied ? 'belegt' : 'frei' }}</td>
+                    <td>{{ patientForBed(b2).id }}</td>
                 </tr>
             </template>
         </table>
     </div>
     <div id="patients" v-show="currentTab == 'patients'">
         <h2>Patientendaten</h2>
-        <table class="w3-table w3-striped">
+        <table class="w3-table w3-striped w3-hover w3-responsive">
             <thead>
-                <tr>
+                <tr class="w3-gray">
                     <th>Lfd. Nr.</th>
                     <th>Name</th>
                     <th>Vorname</th>
@@ -155,7 +161,7 @@ $(document).ready(function(){
                     <td><input class="w3-input" type="text" v-model="patient.discharge" /></td>
                     <td>{{ patient.dischargedBy }}</td>
                 </tr>
-                <tr>
+                <tr class="w3-card-4">
                     <td><button v-on:click="addPatient()" class="w3-button w3-green">+</button></td>
                     <td><input class="w3-input" type="text" v-model="newPatient.name" /></td>
                     <td><input class="w3-input" type="text" v-model="newPatient.firstName" /></td>
