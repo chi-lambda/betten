@@ -1,0 +1,167 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<script type="text/javascript">
+function range(size, startAt = 0) {
+    return [...Array(size).keys()].map(i => i + startAt);
+}
+$(document).ready(function(){
+    window.vue = new Vue({
+        el: '#vueapp',
+        data: {
+            infos: [
+                {title: "Einsatz", content: ""},
+                {title: "Datum", content: ""},
+                {title: "Stationsleitung", content: ""},
+                {title: "Medizinischer Leiter/(Not-)Arzt", content: ""},
+                {title: "Dokumentationsverantwortliche/r", content: ""},
+            ],
+            treatmentTypes: [
+                {title: "SK1-Rot", color: 'w3-red', count: 2, bedtype: "Schockplatz"},
+                {title: "SK2-Gelb-Orange", color: 'w3-orange', count: 2, bedtype: "Überwachungsplatz"},
+                {title: "SK3-Grün", color: 'w3-green', count: 2, bedtype: "Ruheplatz"},
+            ],
+            beds: [],
+            patients: [],
+            newPatient: {id: 1, name: null, firstName: null, gender: null, birth: null, sk: null, discipline: null, bed: null, admission: null, discharge: null, dischargedBy: null},
+            currentTab: 'data'
+        },
+        computed: {
+            applicableBeds: function() {
+                if (this.newPatient.sk) {
+                    let v = this;
+                    return this.beds.filter(b => b.treatmentType.title == v.newPatient.sk)[0].beds;
+                }
+            }
+        },
+        methods: {
+            generateBeds: function(){
+                let v = this;
+                this.beds = this.treatmentTypes.map(t => ({treatmentType: t, beds: range(t.count|0).map(i => ({ treatmentType: t, title: t.bedtype + " " + (i + 1), occupied: false, patientNo: null, needsTransport: false}))}));
+            },
+            addPatient: function() {
+                this.patients.push(
+                    {id: this.newPatient.id, name: this.newPatient.name, firstName: this.newPatient.firstName, gender: this.newPatient.gender, birth: this.newPatient.birth, sk: this.newPatient.sk, discipline: this.newPatient.discipline, bed: this.newPatient.bed, admission: this.newPatient.admission, discharge: this.newPatient.discharge, dischargedBy: this.newPatient.dischargedBy});
+                this.newPatient = {id: this.newPatient.id + 1, name: null, firstName: null, gender: null, birth: null, sk: null, discipline: null, bed: null, admission: null, discharge: null, dischargedBy: null}
+            },
+            openTab: function(tabName) {
+                this.currentTab = tabName
+            }
+        },
+        watch: {
+            patients: {
+                deep: true,
+                handler: function(val) {
+                    for (var i = this.beds.length - 1; i >= 0; i--) {
+                        for (var j = this.beds[i].beds.length - 1; j >= 0; j--) {
+                            let bed = this.beds[i].beds[j]
+                            console.log(bed)
+                            this.beds[i].beds[j].occupied = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.title)
+                        }
+                    }
+                }
+            }
+        }
+        })
+});
+//v.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == t.bedtype + " " + (i + 1))
+</script>
+
+<div id="vueapp">
+
+    <div class="w3-bar w3-black">
+        <button class="w3-bar-item w3-button" v-on:click="openTab('data')">Daten</button>
+        <button class="w3-bar-item w3-button" v-on:click="openTab('uhs')">UHS Belegung</button>
+        <button class="w3-bar-item w3-button" v-on:click="openTab('patients')">Patienten</button>
+    </div> 
+    <div id="data" v-show="currentTab == 'data'" class="w3-container">
+        <div class="w3-half">
+            <h1>Einsatzdaten</h1>
+            <table>
+                <tr v-for="info in infos">
+                    <td>{{ info.title }}:</td>
+                    <td><input class="w3-input" type="text" v-model="info.content"></td>
+                </tr>
+            </table>
+        </div>
+        <div class="w3-container w3-half">
+            <h2>Betten</h2>
+            <table class="w3-table">
+                <tr v-for="m in treatmentTypes" v-bind:class="m.color">
+                    <td>{{ m.title }}:</td>
+                    <td><input class="w3-input" type="text" v-model="m.count"></td>
+                </tr>
+                <tr>
+                    <td>Gesamt</td>
+                    <td>{{ treatmentTypes.map(x=>x.count|0).reduce((x,y) => x+y) }}</td>
+                </tr>
+            </table>
+            <button v-on:click="generateBeds()" class="w3-button w3-green">Betten erstellen</button>
+        </div>
+    </div>
+    <div id="uhs" v-show="currentTab == 'uhs'">
+        <h2>UHS Belegung</h2>
+        <table class="w3-table">
+            <template v-for="b in beds">
+                <tr v-for="b2 in b.beds">
+                    <td v-bind:class="b2.treatmentType.color">{{ b2.title }}</td>
+                    <td>{{ b2.occupied ? 'belegt' : 'frei' }}</td>
+                </tr>
+            </template>
+        </table>
+    </div>
+    <div id="patients" v-show="currentTab == 'patients'">
+        <h2>Patientendaten</h2>
+        <table class="w3-table w3-striped">
+            <thead>
+                <tr>
+                    <th>Lfd. Nr.</th>
+                    <th>Name</th>
+                    <th>Vorname</th>
+                    <th>Geschlecht</th>
+                    <th>Geburtsdatum</th>
+                    <th>SK</th>
+                    <th>Fachgebiet</th>
+                    <th>Platz</th>
+                    <th>Eingang um</th>
+                    <th>Entlassen um</th>
+                    <th>Entlassen mit</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="patient in patients">
+                    <td>{{ patient.id }}</td>
+                    <td>{{ patient.name }}</td>
+                    <td>{{ patient.firstName }}</td>
+                    <td>{{ patient.gender }}</td>
+                    <td>{{ patient.birth }}</td>
+                    <td>{{ patient.sk }}</td>
+                    <td>{{ patient.discipline }}</td>
+                    <td>{{ patient.bed }}</td>
+                    <td>{{ patient.admission }}</td>
+                    <td><input class="w3-input" type="text" v-model="patient.discharge" /></td>
+                    <td>{{ patient.dischargedBy }}</td>
+                </tr>
+                <tr>
+                    <td>{{ newPatient.id }}</td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.name" /></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.firstName" /></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.gender" /></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.birth" /></td>
+                    <td><select v-model="newPatient.sk" class="w3-select">
+                        <option v-for="tt in treatmentTypes" v-bind:class="tt.color">{{tt.title}}</option>
+                    </select></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.discipline" /></td>
+                    <td><select v-model="newPatient.bed" class="w3-select">
+                        <option v-for="b in applicableBeds">{{ b.title }}</option>
+                    </select></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.admission" /></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.discharge" /></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.dischargedBy" /></td>
+                </tr>
+            </tbody>
+        </table>
+        <button v-on:click="addPatient()">Patient hinzufügen</button>
+    </div>
+</div>
