@@ -26,7 +26,7 @@ $(document).ready(function(){
             patients: [],
             newPatient: {id: 1, name: null, firstName: null, gender: null, birth: null, sk: null, discipline: null, bed: null, admission: null, discharge: null, dischargedBy: null},
             currentTab: 'data',
-            patientSortKey: 'id'
+            patientSortKey: 'id',
         },
         computed: {
             applicableBeds: function() {
@@ -44,6 +44,9 @@ $(document).ready(function(){
                 } else {
                     return this.patients.concat().sort((x,y) => x[this.patientSortKey] < y[this.patientSortKey]);
                 }
+            },
+            canAddPatient: function() {
+                return this.newPatient.sk != null && this.newPatient.bed != null
             }
         },
         methods: {
@@ -177,7 +180,7 @@ $(document).ready(function(){
                     <td>{{ patient.dischargedBy }}</td>
                 </tr>
                 <tr class="w3-card-4">
-                    <td><button v-on:click="addPatient()" class="w3-button w3-green">+</button></td>
+                    <td><button v-on:click="addPatient()" class="w3-button w3-green" v-bind:disabled="!canAddPatient">+</button></td>
                     <td><input class="w3-input" type="text" v-model="newPatient.name" /></td>
                     <td><input class="w3-input" type="text" v-model="newPatient.firstName" /></td>
                     <td><input class="w3-input" type="text" v-model="newPatient.gender" /></td>
