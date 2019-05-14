@@ -53,7 +53,7 @@ $(document).ready(function(){
             },
             colorForPatient: function(patient) {
                 if (patient.discharge != null && patient.discharge != '') { return '' }
-                return this.treatmentTypes.filter(tt => tt.title = patient.sk)[0].color;
+                return this.treatmentTypes.filter(tt => tt.title == patient.sk)[0].color;
             },
             patientForBed: function(bed) {
                 let patients = this.patients.filter(p => p.bed == bed.title && (p.discharge == null || p.discharge == ''));
