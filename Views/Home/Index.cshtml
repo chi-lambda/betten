@@ -25,7 +25,8 @@ $(document).ready(function(){
             beds: [],
             patients: [],
             newPatient: {id: 1, name: null, firstName: null, gender: null, birth: null, sk: null, discipline: null, bed: null, admission: null, discharge: null, dischargedBy: null},
-            currentTab: 'data'
+            currentTab: 'data',
+            patientSortKey: 'id'
         },
         computed: {
             applicableBeds: function() {
@@ -36,6 +37,13 @@ $(document).ready(function(){
             },
             haveBeds: function() {
                 return this.beds.length > 0
+            },
+            sortedPatients: function() {
+                if (this.patientSortKey[0] == '-') {
+                    return this.patients.concat().sort((x,y) => x[this.patientSortKey.substring(1)] > y[this.patientSortKey.substring(1)]);
+                } else {
+                    return this.patients.concat().sort((x,y) => x[this.patientSortKey] < y[this.patientSortKey]);
+                }
             }
         },
         methods: {
@@ -59,6 +67,13 @@ $(document).ready(function(){
                 let patients = this.patients.filter(p => p.bed == bed.title && (p.discharge == null || p.discharge == ''));
                 if (patients.length > 0) { return patients[0]; }
                 return {id: ''};
+            },
+            sortPatients: function(key) {
+                if (this.patientSortKey == key) {
+                    this.patientSortKey = '-' + key;
+                } else {
+                    this.patientSortKey = key;
+                }
             }
         },
         watch: {
@@ -123,8 +138,8 @@ $(document).ready(function(){
             <template v-for="b in beds">
                 <tr v-for="b2 in b.beds">
                     <td v-bind:class="b2.treatmentType.color">{{ b2.title }}</td>
-                    <td>{{ b2.occupied ? 'belegt' : 'frei' }}</td>
-                    <td>{{ patientForBed(b2).id }}</td>
+                    <td v-bind:class="{ 'w3-green': !b2.occupied, 'w3-red': b2.occupied }">{{ b2.occupied ? 'belegt' : 'frei' }}</td>
+                    <td v-bind:class="{ 'w3-green': !b2.occupied, 'w3-red': b2.occupied }">{{ patientForBed(b2).id }}</td>
                 </tr>
             </template>
         </table>
@@ -134,21 +149,21 @@ $(document).ready(function(){
         <table class="w3-table w3-striped w3-hover w3-responsive">
             <thead>
                 <tr class="w3-gray">
-                    <th>Lfd. Nr.</th>
-                    <th>Name</th>
-                    <th>Vorname</th>
-                    <th>Geschlecht</th>
-                    <th>Geburtsdatum</th>
-                    <th>SK</th>
-                    <th>Fachgebiet</th>
-                    <th>Platz</th>
-                    <th>Eingang um</th>
-                    <th>Entlassen um</th>
-                    <th>Entlassen mit</th>
+                    <th v-on:click="sortPatients('id')" >Lfd. Nr.<i class="fas fa-caret-up" v-if="this.patientSortKey == 'id'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-id'"></i></th>
+                    <th v-on:click="sortPatients('name')">Name<i class="fas fa-caret-up" v-if="this.patientSortKey == 'name'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-name'"></i></th>
+                    <th v-on:click="sortPatients('firstName')">Vorname<i class="fas fa-caret-up" v-if="this.patientSortKey == 'firstName'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-firstName'"></i></th>
+                    <th v-on:click="sortPatients('gender')">Geschlecht<i class="fas fa-caret-up" v-if="this.patientSortKey == 'gender'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-gender'"></i></th>
+                    <th v-on:click="sortPatients('birth')">Geburtsdatum<i class="fas fa-caret-up" v-if="this.patientSortKey == 'birth'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-birth'"></i></th>
+                    <th v-on:click="sortPatients('sk')">SK<i class="fas fa-caret-up" v-if="this.patientSortKey == 'sk'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-sk'"></i></th>
+                    <th v-on:click="sortPatients('discipline')">Fachgebiet<i class="fas fa-caret-up" v-if="this.patientSortKey == 'discipline'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-discipline'"></i></th>
+                    <th v-on:click="sortPatients('bed')">Platz<i class="fas fa-caret-up" v-if="this.patientSortKey == 'bed'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-bed'"></i></th>
+                    <th v-on:click="sortPatients('admission')">Eingang um<i class="fas fa-caret-up" v-if="this.patientSortKey == 'admission'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-admission'"></i></th>
+                    <th v-on:click="sortPatients('discharge')">Entlassen um<i class="fas fa-caret-up" v-if="this.patientSortKey == 'discharge'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-discharge'"></i></th>
+                    <th v-on:click="sortPatients('dischargedBy')">Entlassen mit<i class="fas fa-caret-up" v-if="this.patientSortKey == 'dischargedBy'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-dischargedBy'"></i></th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="patient in patients">
+                <tr v-for="patient in sortedPatients">
                     <td>{{ patient.id }}</td>
                     <td>{{ patient.name }}</td>
                     <td>{{ patient.firstName }}</td>
