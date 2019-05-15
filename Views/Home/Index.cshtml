@@ -24,7 +24,9 @@ $(document).ready(function(){
             ],
             beds: [],
             patients: [],
+            helpers: [],
             newPatient: {id: 1, name: null, firstName: null, gender: null, birth: null, sk: null, discipline: null, bed: null, admission: null, discharge: null, dischargedBy: null},
+            newHelper: {name: null},
             currentTab: 'data',
             patientSortKey: 'id',
         },
@@ -47,7 +49,7 @@ $(document).ready(function(){
             },
             canAddPatient: function() {
                 return this.newPatient.sk != null && this.newPatient.bed != null
-            }
+            },
         },
         methods: {
             generateBeds: function(){
@@ -78,7 +80,11 @@ $(document).ready(function(){
                 } else {
                     this.patientSortKey = key;
                 }
-            }
+            },
+            addHelper: function() {
+                this.helpers.push({name: this.newHelper.name});
+                this.newHelper.name = null;
+            },
         },
         watch: {
             patients: {
@@ -135,6 +141,18 @@ $(document).ready(function(){
             </table>
             <button v-on:click="generateBeds()" class="w3-button w3-gray" v-if="!haveBeds">Betten erstellen</button>
         </div>
+        <div class="w3-container w3-half">
+            <h2>Helfer</h2>
+            <table class="w3-table w3-card-4 w3-striped w3-hover">
+                <tr>
+                    <td><input type="text" class="w3-input" v-model="newHelper.name" /></td>
+                    <td><button class="w3-button w3-green" v-on:click="addHelper()"><i class="fas fa-plus-square"></i></button></td>
+                </tr>
+                <tr v-for="helper in helpers">
+                    <td colspan="2">{{ helper.name }}</td>
+                </tr>
+            </table>
+        </div>
     </div>
     <div id="uhs" v-show="currentTab == 'uhs'">
         <h2>UHS Belegung</h2>
@@ -175,7 +193,7 @@ $(document).ready(function(){
             </thead>
             <tbody>
                 <tr class="w3-card-4">
-                    <td><button v-on:click="addPatient()" class="w3-button w3-green" v-bind:disabled="!canAddPatient">+</button></td>
+                    <td><button v-on:click="addPatient()" class="w3-button w3-green" v-bind:disabled="!canAddPatient"><i class="fas fa-plus-square"></i></button></td>
                     <td><input class="w3-input" type="text" v-model="newPatient.name" /></td>
                     <td><input class="w3-input" type="text" v-model="newPatient.firstName" /></td>
                     <td><input class="w3-input" type="text" v-model="newPatient.gender" /></td>
