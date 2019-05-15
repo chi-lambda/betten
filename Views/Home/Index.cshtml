@@ -19,7 +19,7 @@ $(document).ready(function(){
             ],
             treatmentTypes: [
                 {title: "SK1-Rot", color: 'w3-red', count: 2, bedtype: "Schockplatz"},
-                {title: "SK2-Gelb-Orange", color: 'w3-orange', count: 2, bedtype: "Überwachungsplatz"},
+                {title: "SK2-Gelb", color: 'w3-amber', count: 2, bedtype: "Überwachungsplatz"},
                 {title: "SK3-Grün", color: 'w3-green', count: 2, bedtype: "Ruheplatz"},
             ],
             beds: [],
@@ -64,6 +64,7 @@ $(document).ready(function(){
             },
             colorForPatient: function(patient) {
                 if (patient.discharge != null && patient.discharge != '') { return '' }
+                if (patient.sk == null || patient.sk == '') { return '' }
                 return this.treatmentTypes.filter(tt => tt.title == patient.sk)[0].color;
             },
             patientForBed: function(bed) {
@@ -149,7 +150,7 @@ $(document).ready(function(){
     </div>
     <div id="patients" v-show="currentTab == 'patients'">
         <h2>Patientendaten</h2>
-        <table class="w3-table w3-striped w3-hover w3-responsive">
+        <table class="w3-table w3-striped w3-hover w3-responsive w3-small">
             <thead>
                 <tr class="w3-gray">
                     <th v-on:click="sortPatients('id')" >Lfd. Nr.<i class="fas fa-caret-up" v-if="this.patientSortKey == 'id'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-id'"></i></th>
@@ -166,6 +167,23 @@ $(document).ready(function(){
                 </tr>
             </thead>
             <tbody>
+                <tr class="w3-card-4">
+                    <td><button v-on:click="addPatient()" class="w3-button w3-green" v-bind:disabled="!canAddPatient">+</button></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.name" /></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.firstName" /></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.gender" /></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.birth" /></td>
+                    <td v-bind:class="colorForPatient(newPatient)"><select v-model="newPatient.sk" class="w3-select">
+                        <option v-for="tt in treatmentTypes" v-bind:class="tt.color">{{tt.title}}</option>
+                    </select></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.discipline" /></td>
+                    <td><select v-model="newPatient.bed" class="w3-select">
+                        <option v-for="b in applicableBeds">{{ b.title }}</option>
+                    </select></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.admission" /></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.discharge" /></td>
+                    <td><input class="w3-input" type="text" v-model="newPatient.dischargedBy" /></td>
+                </tr>
                 <tr v-for="patient in sortedPatients">
                     <td>{{ patient.id }}</td>
                     <td>{{ patient.name }}</td>
@@ -178,23 +196,6 @@ $(document).ready(function(){
                     <td>{{ patient.admission }}</td>
                     <td><input class="w3-input" type="text" v-model="patient.discharge" /></td>
                     <td>{{ patient.dischargedBy }}</td>
-                </tr>
-                <tr class="w3-card-4">
-                    <td><button v-on:click="addPatient()" class="w3-button w3-green" v-bind:disabled="!canAddPatient">+</button></td>
-                    <td><input class="w3-input" type="text" v-model="newPatient.name" /></td>
-                    <td><input class="w3-input" type="text" v-model="newPatient.firstName" /></td>
-                    <td><input class="w3-input" type="text" v-model="newPatient.gender" /></td>
-                    <td><input class="w3-input" type="text" v-model="newPatient.birth" /></td>
-                    <td><select v-model="newPatient.sk" class="w3-select">
-                        <option v-for="tt in treatmentTypes" v-bind:class="tt.color">{{tt.title}}</option>
-                    </select></td>
-                    <td><input class="w3-input" type="text" v-model="newPatient.discipline" /></td>
-                    <td><select v-model="newPatient.bed" class="w3-select">
-                        <option v-for="b in applicableBeds">{{ b.title }}</option>
-                    </select></td>
-                    <td><input class="w3-input" type="text" v-model="newPatient.admission" /></td>
-                    <td><input class="w3-input" type="text" v-model="newPatient.discharge" /></td>
-                    <td><input class="w3-input" type="text" v-model="newPatient.dischargedBy" /></td>
                 </tr>
             </tbody>
         </table>
