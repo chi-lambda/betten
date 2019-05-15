@@ -18,9 +18,9 @@ $(document).ready(function(){
                 {title: "Dokumentations&shy;verantwortliche/r", content: ""},
             ],
             treatmentTypes: [
-                {title: "SK1-Rot", color: 'w3-red', count: 2, bedtype: "Schockplatz"},
-                {title: "SK2-Gelb", color: 'w3-amber', count: 2, bedtype: "Überwachungsplatz"},
-                {title: "SK3-Grün", color: 'w3-green', count: 2, bedtype: "Ruheplatz"},
+                {title: "SK1-Rot", color: 'w3-red', paleColor: 'w3-pale-red', count: 2, bedtype: "Schockplatz"},
+                {title: "SK2-Gelb", color: 'w3-amber', paleColor: 'w3-pale-yellow', count: 2, bedtype: "Überwachungsplatz"},
+                {title: "SK3-Grün", color: 'w3-green', paleColor: 'w3-pale-green', count: 2, bedtype: "Ruheplatz"},
             ],
             beds: [],
             patients: [],
@@ -139,11 +139,18 @@ $(document).ready(function(){
     <div id="uhs" v-show="currentTab == 'uhs'">
         <h2>UHS Belegung</h2>
         <table class="w3-table">
+            <thead>
+                <tr>
+                    <th>Platz</th>
+                    <th>Status</th>
+                    <th>Patientennummer</th>
+                </tr>
+            </thead>
             <template v-for="b in beds">
                 <tr v-for="b2 in b.beds">
                     <td v-bind:class="b2.treatmentType.color">{{ b2.title }}</td>
-                    <td v-bind:class="{ 'w3-green': !b2.occupied, 'w3-red': b2.occupied }">{{ b2.occupied ? 'belegt' : 'frei' }}</td>
-                    <td v-bind:class="{ 'w3-green': !b2.occupied, 'w3-red': b2.occupied }">{{ patientForBed(b2).id }}</td>
+                    <td v-bind:class="!b2.occupied ? b2.treatmentType.paleColor : b2.treatmentType.color">{{ b2.occupied ? 'belegt' : 'frei' }}</td>
+                    <td v-bind:class="!b2.occupied ? b2.treatmentType.paleColor : b2.treatmentType.color">{{ patientForBed(b2).id }}</td>
                 </tr>
             </template>
         </table>
