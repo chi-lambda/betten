@@ -46,6 +46,7 @@ namespace betten.Model
     {
         public string Name { get; set; }
         public string ColorClass { get; set; }
+        public string PaleColorClass { get; set; }
     }
     public class Bed : Entity
     {

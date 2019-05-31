@@ -106,6 +106,15 @@ $(document).ready(function(){
         // Chrome requires returnValue to be set
         e.returnValue = '';
     });
+
+    function wsMessageHandler(event) {
+        console.log(event.data)
+    }
+
+    let ws = new WebSocket("wss://" + location.host + "/ws");
+    ws.onmessage = wsMessageHandler;
+    ws.onopen = () => ws.send(JSON.stringify({Command: "GetSKs"}))
+
 });
 //v.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == t.bedtype + " " + (i + 1))
 </script>

@@ -8,11 +8,13 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using betten.WebsocketHandler;
 
 namespace betten
 {
     public class Startup
     {
+        private Handler wsHandler = new Handler();
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -58,12 +60,35 @@ namespace betten
 
             app.UseAuthorization();
 
+            app.UseWebSockets(new WebSocketOptions());
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
                 endpoints.MapRazorPages();
+            });
+
+            app.Use(async (context, next) =>
+            {
+                if (context.Request.Path == "/ws")
+                {
+                    if (context.WebSockets.IsWebSocketRequest)
+                    {
+                        var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                        await wsHandler.AddClient(context, webSocket);
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = 400;
+                    }
+                }
+                else
+                {
+                    await next();
+                }
+
             });
         }
     }
