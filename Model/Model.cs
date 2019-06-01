@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace betten.Model
 {
@@ -19,6 +20,7 @@ namespace betten.Model
 
     public abstract class Entity
     {
+        [JsonProperty("id")]
         public int Id { get; set; }
     }
 
@@ -36,9 +38,11 @@ namespace betten.Model
     }
     public class Helper : Entity
     {
+        [JsonProperty("name")]
         public string Name { get; set; }
 
         public int EventId { get; set; }
+        [JsonIgnore]
         public Event Event { get; set; }
     }
 

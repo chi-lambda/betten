@@ -8,7 +8,7 @@ function range(size, startAt = 0) {
 }
 $(document).ready(function(){
 
-    window.vue = new Vue({
+    var vue = new Vue({
         el: '#vueapp',
         data: {
             infos: [
@@ -33,6 +33,7 @@ $(document).ready(function(){
             genders: ['m', 'w', 'd', 'unbekannt'],
             disciplines: ['Internistisch', 'Chirurgisch', 'Neuro/Psych', 'Sonstige'],
             editPatientId: null,
+            isConnecting: true,
         },
         computed: {
             applicableBeds: function() {
@@ -87,8 +88,15 @@ $(document).ready(function(){
                 }
             },
             addHelper: function() {
-                this.helpers.push({name: this.newHelper.name});
+                this.helpers.push({name: this.newHelper.name, EventId: 1});
+                ws.send(JSON.stringify({Command: 'UpsertHelpers', Parameters: vue.helpers}));
                 this.newHelper.name = null;
+            },
+            endEditPatient: function() {
+                this.editPatientId = null;
+            },
+            canSavePatient: function(patient) {
+                return patient.sk != null && patient.bed != null
             },
         },
         watch: {
@@ -105,7 +113,10 @@ $(document).ready(function(){
                 }
             }
         }
-        })
+        });
+
+    window.vue = vue;
+
     window.addEventListener('beforeunload', function (e) {
         // Cancel the event
         e.preventDefault();
@@ -114,12 +125,38 @@ $(document).ready(function(){
     });
 
     function wsMessageHandler(event) {
-        console.log(event.data)
+        let json = JSON.parse(event.data);
+        console.log(json);
+        let helpers = json['helpers'];
+        if (helpers) {
+            vue.helpers = helpers;
+        }
     }
 
-    let ws = new WebSocket("wss://" + location.host + "/ws");
-    ws.onmessage = wsMessageHandler;
-    ws.onopen = () => ws.send(JSON.stringify({Command: "GetSKs"}))
+    let ws;
+    function connectWs() {
+        try {
+            ws = new WebSocket("wss://" + location.host + "/ws");
+        } catch(e) {
+            console.log(e);
+            window.setTimeout(connectWs, 1000);
+        }
+        console.log(ws);
+        ws.onopen = function() {
+            vue.isConnecting = false;
+            ws.send(JSON.stringify({Command: "GetInitialData"}));
+        };
+        ws.onmessage = wsMessageHandler;
+        // ws.onerror = function() {
+        //     vue.isConnecting = true;
+        //     window.setTimeout(connectWs, 1000);
+        // }
+        ws.onclose = function() {
+            vue.isConnecting = true;
+            window.setTimeout(connectWs, 1000);
+        }
+    }
+    connectWs();
 
 });
 //v.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == t.bedtype + " " + (i + 1))
@@ -127,6 +164,10 @@ $(document).ready(function(){
 
 <div id="vueapp">
 
+    <div class="w3-panel w3-amber" v-if="isConnecting">
+        <h3>Bitte warten …</h3>
+        <p>Verbindung mit Server wird hergestellt …</p>
+    </div>
     <div class="w3-bar w3-black">
         <button class="w3-bar-item w3-button" v-on:click="openTab('data')">Daten</button>
         <button class="w3-bar-item w3-button" v-on:click="openTab('uhs')" v-if="haveBeds">UHS Belegung</button>
@@ -232,18 +273,41 @@ $(document).ready(function(){
                     <td></td>
                 </tr>
                 <tr v-for="patient in sortedPatients">
-                    <td>{{ patient.id }}</td>
-                    <td>{{ patient.name }}</td>
-                    <td>{{ patient.firstName }}</td>
-                    <td>{{ patient.gender }}</td>
-                    <td>{{ patient.birth }}</td>
-                    <td v-bind:class="colorForPatient(patient)">{{ patient.sk }}</td>
-                    <td>{{ patient.discipline }}</td>
-                    <td v-bind:class="colorForPatient(patient)">{{ patient.bed }}</td>
-                    <td>{{ patient.admission }}</td>
-                    <td>{{ patient.discharge }}</td>
-                    <td><input type="checkbox" v-model="patient.transportRequested" class="w3-checkbox w3-large" />
-                    <td>{{ patient.dischargedBy }}</td>
+                    <template v-if="patient.id != editPatientId">
+                        <td><button class="w3-button w3-blue" title="Bearbeiten" v-on:click="editPatientId = patient.id">{{ patient.id }}</button></td>
+                        <td>{{ patient.name }}</td>
+                        <td>{{ patient.firstName }}</td>
+                        <td>{{ patient.gender }}</td>
+                        <td>{{ patient.birth }}</td>
+                        <td v-bind:class="colorForPatient(patient)">{{ patient.sk }}</td>
+                        <td>{{ patient.discipline }}</td>
+                        <td v-bind:class="colorForPatient(patient)">{{ patient.bed }}</td>
+                        <td>{{ patient.admission }}</td>
+                        <td>{{ patient.discharge }}</td>
+                        <td><input type="checkbox" v-model="patient.transportRequested" class="w3-checkbox w3-large" />
+                        <td>{{ patient.dischargedBy }}</td>
+                    </template>
+                    <template v-if="patient.id == editPatientId">
+                        <td><button v-on:click="endEditPatient()" class="w3-button w3-green" v-bind:disabled="!canSavePatient(patient)"><i class="fas fa-check-square"></i></button></td>
+                        <td><input class="w3-input" type="text" v-model="patient.name" /></td>
+                        <td><input class="w3-input" type="text" v-model="patient.firstName" /></td>
+                        <td><select class="w3-select" v-model="patient.gender">
+                            <option v-for="gender in genders" v-bind:value="gender">{{ gender }}</option>
+                        </select></td>
+                        <td><input class="w3-input" type="text" v-model="patient.birth" id="new-patient-birth" /></td>
+                        <td v-bind:class="colorForPatient(patient)"><select v-model="patient.sk" class="w3-select">
+                            <option v-for="tt in treatmentTypes" v-bind:class="tt.color">{{tt.title}}</option>
+                        </select></td>
+                        <td><select class="w3-select" v-model="patient.discipline">
+                            <option v-for="discipline in disciplines" v-bind:value="discipline">{{ discipline }}</option>
+                        </select></td>
+                        <td><select v-model="patient.bed" class="w3-select">
+                            <option v-for="b in applicableBeds">{{ b.title }}</option>
+                        </select></td>
+                        <td><input class="w3-input" type="time" v-model="patient.admission" /></td>
+                        <td></td>
+                        <td></td>
+                    </template>
                 </tr>
             </tbody>
         </table>
