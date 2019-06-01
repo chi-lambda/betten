@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
@@ -11,6 +12,7 @@ namespace betten.Model
         public DbSet<Helper> Helpers { get; set; }
         public DbSet<Bed> Beds { get; set; }
         public DbSet<Patient> Patients { get; set; }
+        public DbSet<SK> SK { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -32,9 +34,9 @@ namespace betten.Model
         public string Physician { get; set; }
         public string Documenter { get; set; }
 
-        public ICollection<Helper> Helpers { get; set; }
-        public ICollection<Bed> Beds { get; set; }
-        public ICollection<Patient> Patients { get; set; }
+        public List<Helper> Helpers { get; set; }
+        public List<Bed> Beds { get; set; }
+        public List<Patient> Patients { get; set; }
     }
     public class Helper : Entity
     {
@@ -48,9 +50,21 @@ namespace betten.Model
 
     public class SK : Entity
     {
+        [JsonProperty("name")]
         public string Name { get; set; }
+
+        [JsonProperty("colorClass")]
         public string ColorClass { get; set; }
+
+        [JsonProperty("paleColorClass")]
         public string PaleColorClass { get; set; }
+
+        [JsonIgnore]
+        public List<Bed> Beds { get; set; }
+        
+        [JsonProperty("count")]
+        [NotMapped]
+        public int Count => Beds.Count;
     }
     public class Bed : Entity
     {
@@ -62,7 +76,7 @@ namespace betten.Model
         public int SKId { get; set; }
         public SK SK { get; set; }
 
-        public ICollection<Patient> Patients { get; set; }
+        public List<Patient> Patients { get; set; }
     }
     public class Patient : Entity
     {
