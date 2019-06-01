@@ -30,5 +30,12 @@ namespace betten.WebsocketHandler
                 await client.SendHelpers();
             }
         }
+        public async Task BroadcastBeds()
+        {
+            foreach(var client in Clients)
+            {
+                await client.SendBeds();
+            }
+        }
     }
 }

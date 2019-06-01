@@ -68,6 +68,7 @@ namespace betten.Model
     }
     public class Bed : Entity
     {
+        [JsonProperty("name")]
         public string Name { get; set; }
 
         public int EventId { get; set; }

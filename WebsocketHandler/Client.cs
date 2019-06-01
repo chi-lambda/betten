@@ -41,9 +41,13 @@ namespace betten.WebsocketHandler
                         case "GetInitialData":
                             await SendSKs();
                             await SendHelpers();
+                            await SendBeds();
                             break;
                         case "UpsertHelpers":
                             await UpsertHelpers(commandMessage.Parameters);
+                            break;
+                        case "CreateBeds":
+                            await CreateBeds(commandMessage.Parameters);
                             break;
                         default:
                             Console.WriteLine("Unknown message '{0}'", commandMessage.Command);
@@ -72,6 +76,15 @@ namespace betten.WebsocketHandler
             await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
+        public async Task SendBeds()
+        {
+            await SendSKs();
+            var beds = new Dictionary<string, Bed[]>() { { "beds", dbContext.Beds.ToArray() } };
+            var bedsString = JsonConvert.SerializeObject(beds);
+            var sendBytes = Encoding.UTF8.GetBytes(bedsString);
+            await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+
         private async Task UpsertHelpers(object[] parameters)
         {
             var helpers = parameters
@@ -86,14 +99,15 @@ namespace betten.WebsocketHandler
 
         private async Task CreateBeds(object[] parameters)
         {
-            var helpers = parameters
+            Console.WriteLine(string.Join(" ", parameters.Cast<JObject>().Select(o => o.ToObject<CreateBedsParameter>().Count)));
+            var beds = parameters
                 .Cast<JObject>()
-                .Select(o => o.ToObject<Helper>())
-                .Where(h => h.Id == 0)
+                .Select(o => o.ToObject<CreateBedsParameter>())
+                .SelectMany(cbp => Enumerable.Range(1, cbp.Count).Select(i => new Bed() { SKId = cbp.Id, EventId = 1, Name = cbp.Name + " " + i }))
                 .ToArray();
-            await dbContext.Helpers.AddRangeAsync(helpers);
+            await dbContext.Beds.AddRangeAsync(beds);
             await dbContext.SaveChangesAsync();
-            await handler.BroadcastHelpers();
+            await handler.BroadcastBeds();
         }
 
         private WebSocket webSocket;

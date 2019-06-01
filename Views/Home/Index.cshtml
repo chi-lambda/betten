@@ -39,7 +39,7 @@ $(document).ready(function(){
             applicableBeds: function() {
                 if (this.newPatient.sk) {
                     let v = this;
-                    return this.beds.filter(b => b.treatmentType.name == v.newPatient.sk)[0].beds.filter(b => !b.occupied);
+                    return this.beds.filter(b => b.treatmentType.name == v.newPatient.sk && !b.occupied);
                 }
             },
             haveBeds: function() {
@@ -58,8 +58,9 @@ $(document).ready(function(){
         },
         methods: {
             generateBeds: function(){
-                let v = this;
-                this.beds = this.treatmentTypes.map(t => ({treatmentType: t, beds: range(t.count|0).map(i => ({ treatmentType: t, title: t.bedtype + " " + (i + 1), occupied: false, patientNo: null, transportRequested: false}))}));
+                // let v = this;
+                // this.beds = this.treatmentTypes.map(t => ({treatmentType: t, beds: range(t.count|0).map(i => ({ treatmentType: t, name: t.bedtype + " " + (i + 1), occupied: false, patientNo: null, transportRequested: false}))}));
+                ws.send(JSON.stringify({Command: 'CreateBeds', parameters: this.treatmentTypes}));
                 //$("#new-patient-birth").datepicker();
             },
             addPatient: function() {
@@ -76,7 +77,7 @@ $(document).ready(function(){
                 return this.treatmentTypes.filter(tt => tt.name == patient.sk)[0].colorClass;
             },
             patientForBed: function(bed) {
-                let patients = this.patients.filter(p => p.bed == bed.title && (p.discharge == null || p.discharge == ''));
+                let patients = this.patients.filter(p => p.bed == bed.name && (p.discharge == null || p.discharge == ''));
                 if (patients.length > 0) { return patients[0]; }
                 return {id: ''};
             },
@@ -104,11 +105,9 @@ $(document).ready(function(){
                 deep: true,
                 handler: function(val) {
                     for (var i = this.beds.length - 1; i >= 0; i--) {
-                        for (var j = this.beds[i].beds.length - 1; j >= 0; j--) {
-                            let bed = this.beds[i].beds[j]
-                            this.beds[i].beds[j].occupied = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.title)
-                            this.beds[i].beds[j].transportRequested = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.title && p.transportRequested)
-                        }
+                        let bed = this.beds[i]
+                        this.beds[i].occupied = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.name)
+                        this.beds[i].transportRequested = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.name && p.transportRequested)
                     }
                 }
             }
@@ -126,7 +125,7 @@ $(document).ready(function(){
 
     function wsMessageHandler(event) {
         let json = JSON.parse(event.data);
-        console.log(json);
+        console.log(event.data);
         let helpers = json['helpers'];
         if (helpers) {
             vue.helpers = helpers;
@@ -134,6 +133,18 @@ $(document).ready(function(){
         let sks = json['sks'];
         if (sks) {
             vue.treatmentTypes = sks;
+        }
+        let beds = json['beds'];
+        if (beds) {
+            for (var i = beds.length - 1; i >= 0; i--) {
+                let bed = beds[i]
+                beds[i].occupied = vue.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.name)
+                beds[i].transportRequested = vue.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.name && p.transportRequested)
+            }
+            for (let bed of beds) {
+                bed.treatmentType = vue.treatmentTypes.find(tt => tt.id == bed.SKId);
+            }
+            vue.beds = beds;
         }
     }
 
@@ -216,14 +227,14 @@ $(document).ready(function(){
                     <th>Transport angefordert</th>
                 </tr>
             </thead>
-            <template v-for="b in beds">
-                <tr v-for="b2 in b.beds">
-                    <td v-bind:class="b2.treatmentType.colorClass">{{ b2.title }}</td>
-                    <td v-bind:class="!b2.occupied ? b2.treatmentType.paleColorClass : b2.treatmentType.colorClass">{{ b2.occupied ? 'belegt' : 'frei' }}</td>
-                    <td v-bind:class="!b2.occupied ? b2.treatmentType.paleColorClass : b2.treatmentType.colorClass">{{ patientForBed(b2).id }}</td>
-                    <td v-bind:class="!b2.occupied ? b2.treatmentType.paleColorClass : b2.treatmentType.colorClass"><i v-bind:class="{ 'fas': true, 'fa-2x': true, 'fa-check-square': b2.transportRequested }" disabled="disabled" class="w3-checkbox"></td>
+            <tbody>
+                <tr v-for="b in beds">
+                    <td v-bind:class="b.treatmentType.colorClass">{{ b.name }}</td>
+                    <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass">{{ b.occupied ? 'belegt' : 'frei' }}</td>
+                    <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass">{{ patientForBed(b).id }}</td>
+                    <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass"><i v-bind:class="{ 'fas': true, 'fa-2x': true, 'fa-check-square': b.transportRequested }" /></td>
                 </tr>
-            </template>
+            </tbody>
         </table>
     </div>
     <div id="patients" v-show="currentTab == 'patients'">
@@ -261,7 +272,7 @@ $(document).ready(function(){
                         <option v-for="discipline in disciplines" v-bind:value="discipline">{{ discipline }}</option>
                     </select></td>
                     <td><select v-model="newPatient.bed" class="w3-select">
-                        <option v-for="b in applicableBeds">{{ b.title }}</option>
+                        <option v-for="b in applicableBeds">{{ b.name }}</option>
                     </select></td>
                     <td><input class="w3-input" type="time" v-model="newPatient.admission" /></td>
                     <td></td>
@@ -297,7 +308,7 @@ $(document).ready(function(){
                             <option v-for="discipline in disciplines" v-bind:value="discipline">{{ discipline }}</option>
                         </select></td>
                         <td><select v-model="patient.bed" class="w3-select">
-                            <option v-for="b in applicableBeds">{{ b.title }}</option>
+                            <option v-for="b in applicableBeds">{{ b.name }}</option>
                         </select></td>
                         <td><input class="w3-input" type="time" v-model="patient.admission" /></td>
                         <td></td>
