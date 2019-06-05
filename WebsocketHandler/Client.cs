@@ -39,9 +39,9 @@ namespace betten.WebsocketHandler
                             await SendSKs();
                             break;
                         case "GetInitialData":
-                            await SendSKs();
                             await SendHelpers();
                             await SendBeds();
+                            await SendPatients();
                             break;
                         case "UpsertHelpers":
                             await UpsertHelpers(commandMessage.Parameters);
@@ -85,6 +85,14 @@ namespace betten.WebsocketHandler
             await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
+        public async Task SendPatients()
+        {
+            var patients = new Dictionary<string, Patient[]>() { { "patients", dbContext.Patients.ToArray() } };
+            var patientsString = JsonConvert.SerializeObject(patients);
+            var sendBytes = Encoding.UTF8.GetBytes(patientsString);
+            await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+
         private async Task UpsertHelpers(object[] parameters)
         {
             var helpers = parameters
@@ -93,6 +101,18 @@ namespace betten.WebsocketHandler
                 .Where(h => h.Id == 0)
                 .ToArray();
             await dbContext.Helpers.AddRangeAsync(helpers);
+            await dbContext.SaveChangesAsync();
+            await handler.BroadcastHelpers();
+        }
+
+        private async Task UpsertPatients(object[] parameters)
+        {
+            var patients = parameters
+                .Cast<JObject>()
+                .Select(o => o.ToObject<Patient>())
+                .Where(h => h.Id == 0)
+                .ToArray();
+            await dbContext.Patients.AddRangeAsync(patients);
             await dbContext.SaveChangesAsync();
             await handler.BroadcastHelpers();
         }
