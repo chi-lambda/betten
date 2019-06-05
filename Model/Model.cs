@@ -28,14 +28,22 @@ namespace betten.Model
 
     public class Event : Entity
     {
+        [JsonProperty("title")]
         public string Title { get; set; }
-        public DateTime Datum { get; set; }
+        [JsonProperty("date")]
+        public DateTime Date { get; set; }
+        [JsonProperty("stationHead")]
         public string StationHead { get; set; }
+        [JsonProperty("physician")]
         public string Physician { get; set; }
+        [JsonProperty("documenter")]
         public string Documenter { get; set; }
 
+        [JsonIgnore]
         public List<Helper> Helpers { get; set; }
+        [JsonIgnore]
         public List<Bed> Beds { get; set; }
+        [JsonIgnore]
         public List<Patient> Patients { get; set; }
     }
     public class Helper : Entity
@@ -61,7 +69,7 @@ namespace betten.Model
 
         [JsonIgnore]
         public List<Bed> Beds { get; set; }
-        
+
         [JsonProperty("count")]
         [NotMapped]
         public int Count => Beds.Count;
@@ -72,28 +80,41 @@ namespace betten.Model
         public string Name { get; set; }
 
         public int EventId { get; set; }
+        [JsonIgnore]
         public Event Event { get; set; }
 
         public int SKId { get; set; }
+        [JsonIgnore]
         public SK SK { get; set; }
 
+        [JsonIgnore]
         public List<Patient> Patients { get; set; }
     }
     public class Patient : Entity
     {
+        [JsonProperty("name")]
         public string Name { get; set; }
+        [JsonProperty("firstName")]
         public string FirstName { get; set; }
+        [JsonProperty("gender")]
         public string Gender { get; set; }
+        [JsonProperty("birth")]
         public string Birth { get; set; }
+        [JsonProperty("discipline")]
         public string Discipline { get; set; }
+        [JsonProperty("admission")]
         public DateTime Admission { get; set; }
+        [JsonProperty("discharge")]
         public DateTime Discharge { get; set; }
+        [JsonProperty("dischargedBy")]
         public string DischargedBy { get; set; }
 
         public int EventId { get; set; }
+        [JsonIgnore]
         public Event Event { get; set; }
 
         public int BedId { get; set; }
+        [JsonIgnore]
         public Bed Bed { get; set; }
     }
 }
