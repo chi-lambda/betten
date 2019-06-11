@@ -18,30 +18,20 @@ $(document).ready(function(){
                 {title: "Medizinischer Leiter/(Not-)Arzt", content: ""},
                 {title: "Dokumentations&shy;verantwortliche/r", content: ""},
             ],
-            treatmentTypes: [
-                {name: "SK1-Rot", colorClass: 'w3-red', paleColorClass: 'w3-pale-red', count: 2, bedtype: "Schockplatz"},
-                {name: "SK2-Gelb", colorClass: 'w3-amber', paleColorClass: 'w3-pale-yellow', count: 2, bedtype: "Überwachungsplatz"},
-                {name: "SK3-Grün", colorClass: 'w3-green', paleColorClass: 'w3-pale-green', count: 2, bedtype: "Ruheplatz"},
-            ],
+            treatmentTypes: [],
             beds: [],
             patients: [],
             helpers: [],
-            newPatient: {id: 1, name: null, firstName: null, gender: null, birth: null, sk: null, discipline: null, bed: null, admission: null, discharge: null, dischargedBy: null},
+            newPatient: {name: null, firstName: null, gender: null, birth: null, sk: null, discipline: null, bed: null, admission: null, discharge: null, dischargedBy: null, EventId: 1},
             newHelper: {name: null},
             currentTab: 'data',
             patientSortKey: 'id',
             genders: ['m', 'w', 'd', 'unbekannt'],
             disciplines: ['Internistisch', 'Chirurgisch', 'Neuro/Psych', 'Sonstige'],
-            editPatientId: null,
+            editPatient: null,
             isConnecting: true,
         },
         computed: {
-            applicableBeds: function() {
-                if (this.newPatient.sk) {
-                    let v = this;
-                    return this.beds.filter(b => b.treatmentType.name == v.newPatient.sk && !b.occupied);
-                }
-            },
             haveBeds: function() {
                 return this.beds.length > 0
             },
@@ -58,23 +48,26 @@ $(document).ready(function(){
         },
         methods: {
             generateBeds: function(){
-                // let v = this;
-                // this.beds = this.treatmentTypes.map(t => ({treatmentType: t, beds: range(t.count|0).map(i => ({ treatmentType: t, name: t.bedtype + " " + (i + 1), occupied: false, patientNo: null, transportRequested: false}))}));
                 ws.send(JSON.stringify({Command: 'CreateBeds', parameters: this.treatmentTypes}));
                 //$("#new-patient-birth").datepicker();
             },
             addPatient: function() {
                 this.patients.push(
-                    {id: this.newPatient.id, name: this.newPatient.name, firstName: this.newPatient.firstName, gender: this.newPatient.gender, birth: this.newPatient.birth, sk: this.newPatient.sk, discipline: this.newPatient.discipline, bed: this.newPatient.bed, admission: this.newPatient.admission, discharge: this.newPatient.discharge, dischargedBy: this.newPatient.dischargedBy});
-                this.newPatient = {id: this.newPatient.id + 1, name: null, firstName: null, gender: null, birth: null, sk: null, discipline: null, bed: null, admission: null, discharge: null, dischargedBy: null}
+                    {name: this.newPatient.name, firstName: this.newPatient.firstName, gender: this.newPatient.gender, birth: this.newPatient.birth, sk: this.newPatient.sk, discipline: this.newPatient.discipline, bed: this.newPatient.bed, admission: this.newPatient.admission, discharge: this.newPatient.discharge, dischargedBy: this.newPatient.dischargedBy, EventId: 1});
+                ws.send(JSON.stringify({Command: 'UpsertPatients', Parameters: [this.newPatient]}));
+                this.hideAddPatient();
+            },
+            savePatient: function() {
+                ws.send(JSON.stringify({Command: 'UpsertPatients', Parameters: [this.editPatient]}));
+                this.hideEditPatient();
             },
             openTab: function(tabName) {
                 this.currentTab = tabName
             },
             colorForPatient: function(patient) {
                 if (patient.discharge != null && patient.discharge != '') { return '' }
-                if (patient.sk == null || patient.sk == '') { return '' }
-                return this.treatmentTypes.filter(tt => tt.name == patient.sk)[0].colorClass;
+                if (patient.skId == null || patient.skId == '') { return '' }
+                return this.treatmentTypes.find(tt => tt.id == patient.skId).colorClass;
             },
             patientForBed: function(bed) {
                 let patients = this.patients.filter(p => p.bed == bed.name && (p.discharge == null || p.discharge == ''));
@@ -90,14 +83,41 @@ $(document).ready(function(){
             },
             addHelper: function() {
                 this.helpers.push({name: this.newHelper.name, EventId: 1});
-                ws.send(JSON.stringify({Command: 'UpsertHelpers', Parameters: vue.helpers}));
+                ws.send(JSON.stringify({Command: 'UpsertHelpers', Parameters: this.helpers}));
                 this.newHelper.name = null;
             },
             endEditPatient: function() {
-                this.editPatientId = null;
+                this.editPatient = null;
             },
             canSavePatient: function(patient) {
                 return patient.sk != null && patient.bed != null
+            },
+            applicableBeds: function(patient) {
+                if (patient.skId) {
+                    return this.beds.filter(b => b.treatmentType.id == patient.skId && !b.occupied);
+                }
+            },
+            showAddPatient: function() {
+                $('#add-patient-modal').show();
+            },
+            hideAddPatient: function() {
+                $('#add-patient-modal').hide();
+                this.newPatient.name = null;
+                this.newPatient.firstName = null;
+                this.newPatient.gender = null;
+                this.newPatient.birth = null;
+                this.newPatient.skId = null;
+                this.newPatient.discipline = null;
+                this.newPatient.BedId = null;
+                this.newPatient.admission = null;
+            },
+            showEditPatient: function(patient) {
+                this.editPatient = patient;
+                $('#edit-patient-modal').show();
+            },
+            hideEditPatient: function() {
+                $('#edit-patient-modal').hide();
+                this.editPatient = null;
             },
         },
         watch: {
@@ -202,7 +222,7 @@ $(document).ready(function(){
                 </tr>
                 <tr>
                     <td>Gesamt</td>
-                    <td>{{ treatmentTypes.map(x=>x.count|0).reduce((x,y) => x+y) }}</td>
+                    <td>{{ treatmentTypes.length > 0 ? treatmentTypes.map(x=>x.count|0).reduce((x,y) => x+y) : 0 }}</td>
                 </tr>
             </table>
             <button v-on:click="generateBeds()" class="w3-button w3-gray" v-if="!haveBeds">Betten erstellen</button>
@@ -258,68 +278,149 @@ $(document).ready(function(){
                     <th v-on:click="sortPatients('discharge')">Entlassen um<i class="fas fa-caret-up" v-if="this.patientSortKey == 'discharge'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-discharge'"></i></th>
                     <th>Transport angefordert</th>
                     <th v-on:click="sortPatients('dischargedBy')">Entlassungsart<i class="fas fa-caret-up" v-if="this.patientSortKey == 'dischargedBy'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-dischargedBy'"></i></th>
+                    <th>Kommentar</th>
                 </tr>
             </thead>
             <tbody>
                 <tr class="w3-card-4">
-                    <td><button v-on:click="addPatient()" class="w3-button w3-green" v-bind:disabled="!canAddPatient"><i class="fas fa-plus-square"></i></button></td>
-                    <td><input class="w3-input" type="text" v-model="newPatient.name" /></td>
-                    <td><input class="w3-input" type="text" v-model="newPatient.firstName" /></td>
-                    <td><select class="w3-select" v-model="newPatient.gender">
-                        <option v-for="gender in genders" v-bind:value="gender">{{ gender }}</option>
-                    </select></td>
-                    <td><input class="w3-input" type="text" v-model="newPatient.birth" id="new-patient-birth" /></td>
-                    <td v-bind:class="colorForPatient(newPatient)"><select v-model="newPatient.sk" class="w3-select">
-                        <option v-for="tt in treatmentTypes" v-bind:class="tt.colorClass">{{tt.name}}</option>
-                    </select></td>
-                    <td><select class="w3-select" v-model="newPatient.discipline">
-                        <option v-for="discipline in disciplines" v-bind:value="discipline">{{ discipline }}</option>
-                    </select></td>
-                    <td><select v-model="newPatient.bed" class="w3-select">
-                        <option v-for="b in applicableBeds">{{ b.name }}</option>
-                    </select></td>
-                    <td><input class="w3-input" type="time" v-model="newPatient.admission" /></td>
+                    <td><button v-on:click="showAddPatient()" class="w3-button w3-green"><i class="fas fa-plus-square"></i></button></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
                     <td></td>
                     <td></td>
                 </tr>
                 <tr v-for="patient in sortedPatients">
-                    <template v-if="patient.id != editPatientId">
-                        <td><button class="w3-button w3-blue" title="Bearbeiten" v-on:click="editPatientId = patient.id">{{ patient.id }}</button></td>
-                        <td>{{ patient.name }}</td>
-                        <td>{{ patient.firstName }}</td>
-                        <td>{{ patient.gender }}</td>
-                        <td>{{ patient.birth }}</td>
-                        <td v-bind:class="colorForPatient(patient)">{{ patient.sk }}</td>
-                        <td>{{ patient.discipline }}</td>
-                        <td v-bind:class="colorForPatient(patient)">{{ patient.bed }}</td>
-                        <td>{{ patient.admission }}</td>
-                        <td>{{ patient.discharge }}</td>
-                        <td><input type="checkbox" v-model="patient.transportRequested" class="w3-checkbox w3-large" />
-                        <td>{{ patient.dischargedBy }}</td>
-                    </template>
-                    <template v-if="patient.id == editPatientId">
-                        <td><button v-on:click="endEditPatient()" class="w3-button w3-green" v-bind:disabled="!canSavePatient(patient)"><i class="fas fa-check-square"></i></button></td>
-                        <td><input class="w3-input" type="text" v-model="patient.name" /></td>
-                        <td><input class="w3-input" type="text" v-model="patient.firstName" /></td>
-                        <td><select class="w3-select" v-model="patient.gender">
-                            <option v-for="gender in genders" v-bind:value="gender">{{ gender }}</option>
-                        </select></td>
-                        <td><input class="w3-input" type="text" v-model="patient.birth" id="new-patient-birth" /></td>
-                        <td v-bind:class="colorForPatient(patient)"><select v-model="patient.sk" class="w3-select">
-                            <option v-for="tt in treatmentTypes" v-bind:class="tt.colorClass">{{tt.name}}</option>
-                        </select></td>
-                        <td><select class="w3-select" v-model="patient.discipline">
-                            <option v-for="discipline in disciplines" v-bind:value="discipline">{{ discipline }}</option>
-                        </select></td>
-                        <td><select v-model="patient.bed" class="w3-select">
-                            <option v-for="b in applicableBeds">{{ b.name }}</option>
-                        </select></td>
-                        <td><input class="w3-input" type="time" v-model="patient.admission" /></td>
-                        <td></td>
-                        <td></td>
-                    </template>
+                    <td><button class="w3-button w3-blue" title="Bearbeiten" v-on:click="showEditPatient(patient)">{{ patient.patientNumber }}</button></td>
+                    <td>{{ patient.name }}</td>
+                    <td>{{ patient.firstName }}</td>
+                    <td>{{ patient.gender }}</td>
+                    <td>{{ patient.birth }}</td>
+                    <td v-bind:class="colorForPatient(patient)">{{ patient.sk }}</td>
+                    <td>{{ patient.discipline }}</td>
+                    <td v-bind:class="colorForPatient(patient)">{{ patient.bed }}</td>
+                    <td>{{ patient.admission }}</td>
+                    <td>{{ patient.discharge }}</td>
+                    <td><input type="checkbox" v-model="patient.transportRequested" class="w3-checkbox w3-large" />
+                    <td>{{ patient.dischargedBy }}</td>
+                    <td><button disabled="disabled" class="w3-button" v-if="patient.comment">Kommentar</button>
                 </tr>
             </tbody>
         </table>
+        <div class="w3-modal" id="add-patient-modal">
+            <div class="w3-modal-content">
+                <header class="w3-container w3-black">
+                  <h2>Neuer Patient</h2>
+                </header>
+                <div class="w3-container">
+                    <div class="w3-half w3-container">
+                        <label>Vorname:</label>
+                        <input class="w3-input" type="text" v-model="newPatient.firstName" />
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Name:</label>
+                        <input class="w3-input" type="text" v-model="newPatient.name" />
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Geschlecht:</label>
+                        <select class="w3-select" v-model="newPatient.gender">
+                            <option v-for="gender in genders" v-bind:value="gender">{{ gender }}</option>
+                        </select>
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Geburtsdatum:</label>
+                        <input class="w3-input" type="text" v-model="newPatient.birth" id="new-patient-birth" />
+                    </div>
+                    <div style="clear: both;"></div>
+                    <div v-bind:class="colorForPatient(newPatient)" class="w3-half w3-container">
+                        <label>SK:</label>
+                        <select v-model="newPatient.skId" class="w3-select" v-bind:class="colorForPatient(newPatient)">
+                            <option v-for="tt in treatmentTypes" v-bind:class="tt.colorClass" v-bind:value="tt.id">{{tt.name}}</option>
+                        </select>
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Fachgebiet:</label>
+                        <select class="w3-select" v-model="newPatient.discipline">
+                            <option v-for="discipline in disciplines" v-bind:value="discipline">{{ discipline }}</option>
+                        </select>
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Platz:</label>
+                        <select v-model="newPatient.BedId" class="w3-select">
+                            <option v-for="b in applicableBeds(newPatient)" v-bind:value="b.id">{{ b.name }}</option>
+                        </select>
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Eingang:</label>
+                        <input class="w3-input" type="text" v-model="newPatient.admission" />
+                    </div>
+                </div>
+                <footer class="w3-container w3-padding-16">
+                    <button class="w3-button w3-green" v-on:click="addPatient()">Speichern</button>
+                    <button class="w3-button w3-gray" v-on:click="hideAddPatient()">Abbrechen</button>
+                </footer>
+            </div>
+        </div>
+        <div class="w3-modal" id="edit-patient-modal">
+            <div class="w3-modal-content">
+                <header class="w3-container w3-black">
+                  <h2>Patient bearbeiten</h2>
+                </header>
+                <div class="w3-container" v-if="editPatient">
+                    <div class="w3-half w3-container">
+                        <label>Vorname:</label>
+                        <input class="w3-input" type="text" v-model="editPatient.firstName" />
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Name:</label>
+                        <input class="w3-input" type="text" v-model="editPatient.name" />
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Geschlecht:</label>
+                        <select class="w3-select" v-model="editPatient.gender">
+                            <option v-for="gender in genders" v-bind:value="gender">{{ gender }}</option>
+                        </select>
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Geburtsdatum:</label>
+                        <input class="w3-input" type="text" v-model="editPatient.birth" id="new-patient-birth" />
+                    </div>
+                    <div style="clear: both;"></div>
+                    <div v-bind:class="colorForPatient(editPatient)" class="w3-half w3-container">
+                        <label>SK:</label>
+                        <select v-model="editPatient.skId" class="w3-select" v-bind:class="colorForPatient(editPatient)">
+                            <option v-for="tt in treatmentTypes" v-bind:class="tt.colorClass" v-bind:value="tt.id">{{tt.name}}</option>
+                        </select>
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Fachgebiet:</label>
+                        <select class="w3-select" v-model="editPatient.discipline">
+                            <option v-for="discipline in disciplines" v-bind:value="discipline">{{ discipline }}</option>
+                        </select>
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Platz:</label>
+                        <select v-model="editPatient.BedId" class="w3-select">
+                            <option v-for="b in applicableBeds(editPatient)" v-bind:value="b.id">{{ b.name }}</option>
+                        </select>
+                    </div>
+                    <div class="w3-half w3-container">
+                        <label>Eingang:</label>
+                        <input class="w3-input" type="text" v-model="editPatient.admission" />
+                    </div>
+                </div>
+                <footer class="w3-container w3-padding-16">
+                    <button class="w3-button w3-green" v-on:click="savePatient()">Speichern</button>
+                    <button class="w3-button w3-gray" v-on:click="hideEditPatient()">Abbrechen</button>
+                </footer>
+            </div>
+        </div>
     </div>
 </div>

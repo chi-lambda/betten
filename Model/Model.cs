@@ -67,6 +67,9 @@ namespace betten.Model
         [JsonProperty("paleColorClass")]
         public string PaleColorClass { get; set; }
 
+        [JsonProperty("bedPrefix")]
+        public string BedPrefix { get; set; }
+
         [JsonIgnore]
         public List<Bed> Beds { get; set; }
 
@@ -103,11 +106,13 @@ namespace betten.Model
         [JsonProperty("discipline")]
         public string Discipline { get; set; }
         [JsonProperty("admission")]
-        public DateTime Admission { get; set; }
+        public string Admission { get; set; }
         [JsonProperty("discharge")]
-        public DateTime Discharge { get; set; }
+        public string Discharge { get; set; }
         [JsonProperty("dischargedBy")]
         public string DischargedBy { get; set; }
+        [JsonProperty("patientNumber")]
+        public int? PatientNumber { get; set; }
 
         public int EventId { get; set; }
         [JsonIgnore]
@@ -116,5 +121,17 @@ namespace betten.Model
         public int BedId { get; set; }
         [JsonIgnore]
         public Bed Bed { get; set; }
+
+        public void Update(Patient other)
+        {
+            Name = other.Name;
+            FirstName = other.FirstName;
+            Gender = other.Gender;
+            Birth = other.Birth;
+            Discipline = other.Discipline;
+            Admission = other.Admission;
+            Discharge = other.Discharge;
+            DischargedBy = other.DischargedBy;
+        }
     }
 }

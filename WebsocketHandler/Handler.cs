@@ -12,27 +12,35 @@ namespace betten.WebsocketHandler
         private ICollection<Client> Clients = new List<Client>();
         private BettenContext dbContext = new BettenContext();
 
-        public async Task AddClient(HttpContext httpContext, WebSocket webSocket)
+        public async Task AddClient(HttpContext httpContext, WebSocket webSocket, bool isLocal)
         {
-            var client = new Client(httpContext, dbContext, webSocket, this);
+            var client = new Client(httpContext, dbContext, webSocket, this, isLocal);
             Clients.Add(client);
             await client.Run();
         }
 
-        public void RemoveClient(Client client){
+        public void RemoveClient(Client client)
+        {
             Clients.Remove(client);
         }
 
         public async Task BroadcastHelpers()
         {
-            foreach(var client in Clients)
+            foreach (var client in Clients)
             {
                 await client.SendHelpers();
             }
         }
+        public async Task BroadcastPatients()
+        {
+            foreach (var client in Clients)
+            {
+                await client.SendPatients();
+            }
+        }
         public async Task BroadcastBeds()
         {
-            foreach(var client in Clients)
+            foreach (var client in Clients)
             {
                 await client.SendBeds();
             }
