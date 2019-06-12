@@ -126,8 +126,8 @@ $(document).ready(function(){
                 handler: function(val) {
                     for (var i = this.beds.length - 1; i >= 0; i--) {
                         let bed = this.beds[i]
-                        this.beds[i].occupied = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.name)
-                        this.beds[i].transportRequested = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.name && p.transportRequested)
+                        this.beds[i].occupied = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.BedId == bed.id)
+                        this.beds[i].transportRequested = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.BedId == bed.id && p.transportRequested)
                     }
                 }
             }
@@ -156,6 +156,10 @@ $(document).ready(function(){
         }
         let patients = json['patients'];
         if (patients) {
+            for (let patient of patients) {
+                patient.bed = vue.beds.find(b => b.id == patient.BedId);
+                patient.skId = patient.bed.skId;
+            }
             vue.patients = patients;
         }
         let beds = json['beds'];
@@ -167,6 +171,7 @@ $(document).ready(function(){
             }
             for (let bed of beds) {
                 bed.treatmentType = vue.treatmentTypes.find(tt => tt.id == bed.SKId);
+                bed.sk = bed.treatmentType;
             }
             vue.beds = beds;
         }
@@ -303,9 +308,9 @@ $(document).ready(function(){
                     <td>{{ patient.firstName }}</td>
                     <td>{{ patient.gender }}</td>
                     <td>{{ patient.birth }}</td>
-                    <td v-bind:class="colorForPatient(patient)">{{ patient.sk }}</td>
+                    <td v-bind:class="patient.bed.sk.colorClass">{{ patient.bed.sk.name }}</td>
                     <td>{{ patient.discipline }}</td>
-                    <td v-bind:class="colorForPatient(patient)">{{ patient.bed }}</td>
+                    <td v-bind:class="patient.bed.sk.colorClass">{{ patient.bed.name }}</td>
                     <td>{{ patient.admission }}</td>
                     <td>{{ patient.discharge }}</td>
                     <td><input type="checkbox" v-model="patient.transportRequested" class="w3-checkbox w3-large" />
@@ -395,7 +400,7 @@ $(document).ready(function(){
                     <div style="clear: both;"></div>
                     <div v-bind:class="colorForPatient(editPatient)" class="w3-half w3-container">
                         <label>SK:</label>
-                        <select v-model="editPatient.skId" class="w3-select" v-bind:class="colorForPatient(editPatient)">
+                        <select v-model="editPatient.skId" class="w3-select" v-bind:class="editPatient.bed.sk.colorClass">
                             <option v-for="tt in treatmentTypes" v-bind:class="tt.colorClass" v-bind:value="tt.id">{{tt.name}}</option>
                         </select>
                     </div>
