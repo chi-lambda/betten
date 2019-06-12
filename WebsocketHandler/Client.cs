@@ -32,7 +32,6 @@ namespace betten.WebsocketHandler
             while (!result.CloseStatus.HasValue)
             {
                 var message = Encoding.UTF8.GetString(buffer).Trim('\0');
-                Console.WriteLine(">>{0}<<", message);
                 var commandMessage = JsonConvert.DeserializeObject<CommandMessage>(message);
                 if (commandMessage != null)
                     switch (commandMessage.Command)
@@ -99,7 +98,7 @@ namespace betten.WebsocketHandler
         public async Task SendBeds()
         {
             await SendSKs();
-            var beds = new Dictionary<string, Bed[]>() { { "beds", dbContext.Beds.ToArray() } };
+            var beds = new Dictionary<string, Bed[]>() { { "beds", dbContext.Beds.Include(b => b.Patients).ToArray() } };
             var bedsString = JsonConvert.SerializeObject(beds);
             var sendBytes = Encoding.UTF8.GetBytes(bedsString);
             try
