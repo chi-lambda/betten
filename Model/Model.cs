@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
@@ -113,6 +114,10 @@ namespace betten.Model
         public string DischargedBy { get; set; }
         [JsonProperty("patientNumber")]
         public int? PatientNumber { get; set; }
+        [JsonProperty("transported")]
+        public bool Transported { get; set; }
+        [JsonProperty("comment")]
+        public string Comment { get; set; }
 
         public int EventId { get; set; }
         [JsonIgnore]
@@ -132,6 +137,9 @@ namespace betten.Model
             Admission = other.Admission;
             Discharge = other.Discharge;
             DischargedBy = other.DischargedBy;
+            BedId = other.BedId;
+            Transported = other.Transported;
+            Comment = other.Comment;
         }
     }
 }

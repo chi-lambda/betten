@@ -94,11 +94,13 @@ $(document).ready(function(){
             },
             applicableBeds: function(patient) {
                 if (patient.skId) {
-                    return this.beds.filter(b => b.treatmentType.id == patient.skId && !b.occupied);
+                    return this.beds.filter(b => b.treatmentType.id == patient.skId && (!b.occupied || b.id == patient.BedId));
                 }
             },
             showAddPatient: function() {
                 $('#add-patient-modal').show();
+                let now = new Date();
+                this.newPatient.admission = now.getHours() + ':' + now.getMinutes();
             },
             hideAddPatient: function() {
                 $('#add-patient-modal').hide();
@@ -127,7 +129,7 @@ $(document).ready(function(){
                     for (var i = this.beds.length - 1; i >= 0; i--) {
                         let bed = this.beds[i]
                         this.beds[i].occupied = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.BedId == bed.id)
-                        this.beds[i].transportRequested = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.BedId == bed.id && p.transportRequested)
+                        this.beds[i].transported = this.patients.some(p => (p.discharge == null || p.discharge == "") && p.BedId == bed.id && p.transported)
                     }
                 }
             }
@@ -158,7 +160,7 @@ $(document).ready(function(){
         if (patients) {
             for (let patient of patients) {
                 patient.bed = vue.beds.find(b => b.id == patient.BedId);
-                patient.skId = patient.bed.skId;
+                patient.skId = patient.bed.SKId;
             }
             vue.patients = patients;
         }
@@ -167,7 +169,7 @@ $(document).ready(function(){
             for (var i = beds.length - 1; i >= 0; i--) {
                 let bed = beds[i]
                 beds[i].occupied = vue.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.name)
-                beds[i].transportRequested = vue.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.name && p.transportRequested)
+                beds[i].transported = vue.patients.some(p => (p.discharge == null || p.discharge == "") && p.bed == bed.name && p.transported)
             }
             for (let bed of beds) {
                 bed.treatmentType = vue.treatmentTypes.find(tt => tt.id == bed.SKId);
@@ -187,9 +189,8 @@ $(document).ready(function(){
         ws.onmessage = wsMessageHandler;
         ws.onclose = function() {
             vue.isConnecting = true;
-            window.setTimeout(connectWs, 1000);
+            window.setTimeout(connectWs, 100);
         }
-        console.log(ws);
     }
     connectWs();
 
@@ -261,7 +262,7 @@ $(document).ready(function(){
                     <td v-bind:class="b.treatmentType.colorClass">{{ b.name }}</td>
                     <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass">{{ b.occupied ? 'belegt' : 'frei' }}</td>
                     <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass">{{ patientForBed(b).id }}</td>
-                    <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass"><i v-bind:class="{ 'fas': true, 'fa-2x': true, 'fa-check-square': b.transportRequested }" /></td>
+                    <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass"><i v-bind:class="{ 'fas': true, 'fa-2x': true, 'fa-check-square': b.transported }" /></td>
                 </tr>
             </tbody>
         </table>
@@ -280,8 +281,8 @@ $(document).ready(function(){
                     <th v-on:click="sortPatients('discipline')">Fachgebiet<i class="fas fa-caret-up" v-if="this.patientSortKey == 'discipline'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-discipline'"></i></th>
                     <th v-on:click="sortPatients('bed')">Platz<i class="fas fa-caret-up" v-if="this.patientSortKey == 'bed'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-bed'"></i></th>
                     <th v-on:click="sortPatients('admission')">Eingang um<i class="fas fa-caret-up" v-if="this.patientSortKey == 'admission'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-admission'"></i></th>
-                    <th v-on:click="sortPatients('discharge')">Entlassen um<i class="fas fa-caret-up" v-if="this.patientSortKey == 'discharge'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-discharge'"></i></th>
                     <th>Transport angefordert</th>
+                    <th v-on:click="sortPatients('discharge')">Entlassen um<i class="fas fa-caret-up" v-if="this.patientSortKey == 'discharge'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-discharge'"></i></th>
                     <th v-on:click="sortPatients('dischargedBy')">Entlassungsart<i class="fas fa-caret-up" v-if="this.patientSortKey == 'dischargedBy'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-dischargedBy'"></i></th>
                     <th>Kommentar</th>
                 </tr>
@@ -312,8 +313,8 @@ $(document).ready(function(){
                     <td>{{ patient.discipline }}</td>
                     <td v-bind:class="patient.bed.sk.colorClass">{{ patient.bed.name }}</td>
                     <td>{{ patient.admission }}</td>
+                    <td><input type="checkbox" v-model="patient.transported" class="w3-checkbox w3-large" />
                     <td>{{ patient.discharge }}</td>
-                    <td><input type="checkbox" v-model="patient.transportRequested" class="w3-checkbox w3-large" />
                     <td>{{ patient.dischargedBy }}</td>
                     <td><button disabled="disabled" class="w3-button" v-if="patient.comment">Kommentar</button>
                 </tr>
@@ -368,7 +369,7 @@ $(document).ready(function(){
                     </div>
                 </div>
                 <footer class="w3-container w3-padding-16">
-                    <button class="w3-button w3-green" v-on:click="addPatient()">Speichern</button>
+                    <button class="w3-button w3-green" v-on:click="addPatient()" v-bind:disabled="!canSavePatient(newPatient)">Speichern</button>
                     <button class="w3-button w3-gray" v-on:click="hideAddPatient()">Abbrechen</button>
                 </footer>
             </div>
@@ -422,7 +423,7 @@ $(document).ready(function(){
                     </div>
                 </div>
                 <footer class="w3-container w3-padding-16">
-                    <button class="w3-button w3-green" v-on:click="savePatient()">Speichern</button>
+                    <button class="w3-button w3-green" v-on:click="savePatient()" v-bind:disabled="!canSavePatient(editPatient)">Speichern</button>
                     <button class="w3-button w3-gray" v-on:click="hideEditPatient()">Abbrechen</button>
                 </footer>
             </div>

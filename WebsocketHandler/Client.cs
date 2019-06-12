@@ -31,7 +31,7 @@ namespace betten.WebsocketHandler
             WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
             while (!result.CloseStatus.HasValue)
             {
-                var message = Encoding.UTF8.GetString(buffer);
+                var message = Encoding.UTF8.GetString(buffer).Trim('\0');
                 Console.WriteLine(">>{0}<<", message);
                 var commandMessage = JsonConvert.DeserializeObject<CommandMessage>(message);
                 if (commandMessage != null)
@@ -122,7 +122,6 @@ namespace betten.WebsocketHandler
                 .Select(o => o.ToObject<Patient>())
                 .Where(p => p.Id == 0)
                 .ToArray();
-            Console.WriteLine("New patients: {0} - {1}", newPatients.Length, string.Join(", ", newPatients.Select(p => p.Id)));
             var patientNumber = await dbContext.Patients.Select(p => p.PatientNumber).MaxAsync() ?? 0;
             foreach (var patient in newPatients)
             {
@@ -135,7 +134,6 @@ namespace betten.WebsocketHandler
                 .Select(o => o.ToObject<Patient>())
                 .Where(p => p.Id != 0)
                 .ToDictionary(k => k.Id, v => v);
-            Console.WriteLine("Existing patients: {0} - {1} - {2} - {3}", existingPatients.Count, string.Join(", ", existingPatients.Values.Select(p => p.Id)), string.Join(", ", existingPatients.Values.Select(p => p.BedId)), string.Join(", ", existingPatients.Values.Select(p => p.EventId)));
             var existingIds = existingPatients.Keys;
             var dbPatients = dbContext.Patients.Where(p => existingIds.Contains(p.Id));
             foreach (var patient in dbPatients)
@@ -149,7 +147,6 @@ namespace betten.WebsocketHandler
         private async Task CreateBeds(object[] parameters)
         {
             if (!isLocal) { return; }
-            Console.WriteLine(string.Join(" ", parameters.Cast<JObject>().Select(o => o.ToObject<CreateBedsParameter>().Count)));
             var bedPrefixes = dbContext.SK.ToDictionary(k => k.Id, v => v.BedPrefix);
             var beds = parameters
                 .Cast<JObject>()
