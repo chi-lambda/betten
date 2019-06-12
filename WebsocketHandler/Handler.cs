@@ -15,13 +15,19 @@ namespace betten.WebsocketHandler
         public async Task AddClient(HttpContext httpContext, WebSocket webSocket, bool isLocal)
         {
             var client = new Client(httpContext, dbContext, webSocket, this, isLocal);
-            Clients.Add(client);
+            lock (Clients)
+            {
+                Clients.Add(client);
+            }
             await client.Run();
         }
 
         public void RemoveClient(Client client)
         {
-            Clients.Remove(client);
+            lock (Clients)
+            {
+                Clients.Remove(client);
+            }
         }
 
         public async Task BroadcastHelpers()

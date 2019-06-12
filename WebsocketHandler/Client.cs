@@ -42,7 +42,6 @@ namespace betten.WebsocketHandler
                             break;
                         case "GetInitialData":
                             await SendHelpers();
-                            await SendBeds();
                             await SendPatients();
                             break;
                         case "UpsertHelpers":
@@ -71,7 +70,14 @@ namespace betten.WebsocketHandler
             var sks = new Dictionary<string, SK[]>() { { "sks", dbContext.SK.Include(sk => sk.Beds).ToArray() } };
             var skString = JsonConvert.SerializeObject(sks);
             var sendBytes = Encoding.UTF8.GetBytes(skString);
-            await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            try
+            {
+                await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            catch
+            {
+                Disconnect();
+            }
         }
 
         public async Task SendHelpers()
@@ -80,7 +86,14 @@ namespace betten.WebsocketHandler
             var helpers = new Dictionary<string, Helper[]>() { { "helpers", dbContext.Helpers.ToArray() } };
             var helpersString = JsonConvert.SerializeObject(helpers);
             var sendBytes = Encoding.UTF8.GetBytes(helpersString);
-            await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            try
+            {
+                await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            catch
+            {
+                Disconnect();
+            }
         }
 
         public async Task SendBeds()
@@ -89,16 +102,31 @@ namespace betten.WebsocketHandler
             var beds = new Dictionary<string, Bed[]>() { { "beds", dbContext.Beds.ToArray() } };
             var bedsString = JsonConvert.SerializeObject(beds);
             var sendBytes = Encoding.UTF8.GetBytes(bedsString);
-            await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            try
+            {
+                await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            catch
+            {
+                Disconnect();
+            }
         }
 
         public async Task SendPatients()
         {
+            await SendBeds();
             ///            if (!isLocal) { return; }
             var patients = new Dictionary<string, Patient[]>() { { "patients", dbContext.Patients.ToArray() } };
             var patientsString = JsonConvert.SerializeObject(patients);
             var sendBytes = Encoding.UTF8.GetBytes(patientsString);
-            await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            try
+            {
+                await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            catch
+            {
+                Disconnect();
+            }
         }
 
         private async Task UpsertHelpers(object[] parameters)
@@ -156,6 +184,16 @@ namespace betten.WebsocketHandler
             await dbContext.Beds.AddRangeAsync(beds);
             await dbContext.SaveChangesAsync();
             await handler.BroadcastBeds();
+        }
+
+        private async void Disconnect()
+        {
+            try
+            {
+                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disconnecting", new CancellationToken());
+            }
+            catch { }
+            handler.RemoveClient(this);
         }
 
         private WebSocket webSocket;

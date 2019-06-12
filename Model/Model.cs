@@ -93,6 +93,14 @@ namespace betten.Model
 
         [JsonIgnore]
         public List<Patient> Patients { get; set; }
+
+        [NotMapped]
+        [JsonProperty("transported")]
+        public bool Transported => Patients?.FirstOrDefault(p => p.Discharge == null)?.Transported ?? false;
+
+        [NotMapped]
+        [JsonProperty("occupied")]
+        public bool Occupied => Patients?.Any(p => p.Discharge == null) ?? false;
     }
     public class Patient : Entity
     {
