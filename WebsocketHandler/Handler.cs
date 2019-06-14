@@ -32,21 +32,21 @@ namespace betten.WebsocketHandler
 
         public async Task BroadcastHelpers()
         {
-            foreach (var client in Clients)
+            foreach (var client in Clients.ToArray())
             {
                 await client.SendHelpers();
             }
         }
         public async Task BroadcastPatients()
         {
-            foreach (var client in Clients)
+            foreach (var client in Clients.ToArray())
             {
                 await client.SendPatients();
             }
         }
         public async Task BroadcastBeds()
         {
-            foreach (var client in Clients)
+            foreach (var client in Clients.ToArray())
             {
                 await client.SendBeds();
             }

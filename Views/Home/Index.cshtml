@@ -24,6 +24,7 @@ $(document).ready(function(){
             helpers: [],
             newPatient: {name: null, firstName: null, gender: null, birth: null, sk: null, discipline: null, bed: null, admission: null, discharge: null, dischargedBy: null, EventId: 1},
             newHelper: {name: null},
+            isLocal: @ViewData["IsLocal"].ToString().ToLower(),
             currentTab: 'data',
             patientSortKey: 'id',
             genders: ['m', 'w', 'd', 'unbekannt'],
@@ -70,7 +71,7 @@ $(document).ready(function(){
                 return this.treatmentTypes.find(tt => tt.id == patient.skId).colorClass;
             },
             patientForBed: function(bed) {
-                let patients = this.patients.filter(p => p.bed == bed.name && (p.discharge == null || p.discharge == ''));
+                let patients = this.patients.filter(p => p.BedId == bed.id && (p.discharge == null || p.discharge == ''));
                 if (patients.length > 0) { return patients[0]; }
                 return {id: ''};
             },
@@ -123,17 +124,14 @@ $(document).ready(function(){
                 $('#edit-patient-modal').hide();
                 this.editPatient = null;
             },
+            toggleTransported: function(patient) {
+                patient.transported = !patient.transported;
+                ws.send(JSON.stringify({Command: 'ToggleTransported', Parameters: [patient.id]}));
+            }
         }
         });
 
     window.vue = vue;
-
-    window.addEventListener('beforeunload', function (e) {
-        // Cancel the event
-        e.preventDefault();
-        // Chrome requires returnValue to be set
-        e.returnValue = '';
-    });
 
     function wsMessageHandler(event) {
         let json = JSON.parse(event.data);
@@ -189,12 +187,12 @@ $(document).ready(function(){
         <h3>Bitte warten …</h3>
         <p>Verbindung mit Server wird hergestellt …</p>
     </div>
-    <div class="w3-bar w3-black">
+    <div class="w3-bar w3-black" v-if="isLocal">
         <button class="w3-bar-item w3-button" v-on:click="openTab('data')">Daten</button>
         <button class="w3-bar-item w3-button" v-on:click="openTab('uhs')" v-if="haveBeds">UHS Belegung</button>
         <button class="w3-bar-item w3-button" v-on:click="openTab('patients')" v-if="haveBeds">Patienten</button>
     </div> 
-    <div id="data" v-show="currentTab == 'data'" class="w3-container">
+    <div id="data" v-show="isLocal && currentTab == 'data'" class="w3-container">
         <div class="w3-half">
             <h1>Einsatzdaten</h1>
             <table class="w3-card-4 w3-table">
@@ -231,7 +229,7 @@ $(document).ready(function(){
             </table>
         </div>
     </div>
-    <div id="uhs" v-show="currentTab == 'uhs'">
+    <div id="uhs" v-show="!isLocal || currentTab == 'uhs'">
         <h2>UHS Belegung</h2>
         <table class="w3-table">
             <thead>
@@ -246,13 +244,13 @@ $(document).ready(function(){
                 <tr v-for="b in beds">
                     <td v-bind:class="b.treatmentType.colorClass">{{ b.name }}</td>
                     <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass">{{ b.occupied ? 'belegt' : 'frei' }}</td>
-                    <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass">{{ patientForBed(b).id }}</td>
-                    <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass"><i v-bind:class="{ 'fas': true, 'fa-2x': true, 'fa-check-square': b.transported }" /></td>
+                    <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass">{{ b.patientNumber }}</td>
+                    <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass"><i v-bind:class="{ 'fas': true, 'fa-check-square': b.transported }" /></td>
                 </tr>
             </tbody>
         </table>
     </div>
-    <div id="patients" v-show="currentTab == 'patients'">
+    <div id="patients" v-show="isLocal && currentTab == 'patients'">
         <h2>Patientendaten</h2>
         <table class="w3-table w3-striped w3-hover w3-responsive w3-small">
             <thead>
@@ -286,7 +284,7 @@ $(document).ready(function(){
                     <td>{{ patient.discipline }}</td>
                     <td v-bind:class="patient.bed.sk.colorClass">{{ patient.bed.name }}</td>
                     <td>{{ patient.admission }}</td>
-                    <td><input type="checkbox" v-model="patient.transported" class="w3-checkbox w3-large" />
+                    <td><button v-bind:class="{'w3-button': true, 'w3-gray': !patient.transported, 'w3-red': patient.transported}" v-on:click="toggleTransported(patient)" v-bind:disabled="patient.discharge != null && patient.discharge != ''">{{ patient.transported ? 'ja' : 'nein' }}</button>
                     <td>{{ patient.discharge }}</td>
                     <td>{{ patient.dischargedBy }}</td>
                     <td><button disabled="disabled" class="w3-button" v-if="patient.comment">Kommentar</button>

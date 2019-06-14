@@ -101,6 +101,10 @@ namespace betten.Model
         [NotMapped]
         [JsonProperty("occupied")]
         public bool Occupied => Patients?.Any(p => p.Discharge == null) ?? false;
+
+        [NotMapped]
+        [JsonProperty("patientNumber")]
+        public int? PatientNumber => Patients?.FirstOrDefault(p => p.Discharge == null)?.PatientNumber;
     }
     public class Patient : Entity
     {

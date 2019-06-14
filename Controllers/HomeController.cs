@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using betten.Models;
 using Newtonsoft.Json;
+using System.Net;
 
 namespace betten.Controllers
 {
@@ -13,6 +14,7 @@ namespace betten.Controllers
     {
         public IActionResult Index()
         {
+            ViewData["IsLocal"] = Request.HttpContext.Connection.RemoteIpAddress.Equals(IPAddress.Loopback);
             return View();
         }
 

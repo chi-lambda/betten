@@ -52,6 +52,9 @@ namespace betten.WebsocketHandler
                         case "CreateBeds":
                             await CreateBeds(commandMessage.Parameters);
                             break;
+                        case "ToggleTransported":
+                            await ToggleTransported(commandMessage.Parameters);
+                            break;
                         default:
                             Console.WriteLine("Unknown message '{0}'", commandMessage.Command);
                             break;
@@ -114,7 +117,7 @@ namespace betten.WebsocketHandler
         public async Task SendPatients()
         {
             await SendBeds();
-            ///            if (!isLocal) { return; }
+            if (!isLocal) { return; }
             var patients = new Dictionary<string, Patient[]>() { { "patients", dbContext.Patients.ToArray() } };
             var patientsString = JsonConvert.SerializeObject(patients);
             var sendBytes = Encoding.UTF8.GetBytes(patientsString);
@@ -183,6 +186,22 @@ namespace betten.WebsocketHandler
             await dbContext.Beds.AddRangeAsync(beds);
             await dbContext.SaveChangesAsync();
             await handler.BroadcastBeds();
+        }
+
+        private async Task ToggleTransported(object[] parameters)
+        {
+            if (!isLocal) { return; }
+            Console.WriteLine("Is local");
+            Console.WriteLine("parameters.Length = {0}", parameters.Length);
+            if (parameters.Length < 1) { return; }
+            Console.WriteLine("parameters[0].GetType() = {0}", parameters[0].GetType());
+            if (!(parameters[0] is long)) { return; }
+            var patientId = (long)parameters[0];
+            var patient = await dbContext.Patients.FirstOrDefaultAsync(p => p.Id == patientId);
+            if(patient == null) {return;}
+            patient.Transported = !patient.Transported;
+            await dbContext.SaveChangesAsync();
+            await handler.BroadcastPatients();
         }
 
         private async void Disconnect()
