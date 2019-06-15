@@ -42,9 +42,9 @@ $(document).ready(function(){
             },
             sortedPatients: function() {
                 if (this.patientSortKey[0] == '-') {
-                    return this.patients.concat().sort((x,y) => x[this.patientSortKey.substring(1)] > y[this.patientSortKey.substring(1)]);
+                    return this.patients.concat().sort((x,y) => x[this.patientSortKey.substring(1)] < y[this.patientSortKey.substring(1)]);
                 } else {
-                    return this.patients.concat().sort((x,y) => x[this.patientSortKey] < y[this.patientSortKey]);
+                    return this.patients.concat().sort((x,y) => x[this.patientSortKey] > y[this.patientSortKey]);
                 }
             },
             canAddPatient: function() {
