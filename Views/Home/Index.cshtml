@@ -30,7 +30,6 @@ $(document).ready(function(){
             genders: ['m', 'w', 'd', 'unbekannt'],
             disciplines: ['Internistisch', 'Chirurgisch', 'Neuro/Psych', 'Sonstige'],
             editPatient: null,
-            isConnecting: true,
             dischargePatientParameters: {
                 id: null,
                 dischargedBy: null
@@ -185,12 +184,12 @@ $(document).ready(function(){
     function connectWs() {
         ws = new WebSocket("wss://" + location.host + "/ws");
         ws.onopen = function() {
-            vue.isConnecting = false;
+            $('#please-wait-modal').hide();
             ws.send(JSON.stringify({Command: "GetInitialData"}));
         };
         ws.onmessage = wsMessageHandler;
         ws.onclose = function() {
-            vue.isConnecting = true;
+            $('#please-wait-modal').show();
             window.setTimeout(connectWs, 100);
         }
     }
@@ -202,10 +201,6 @@ $(document).ready(function(){
 
 <div id="vueapp">
 
-    <div class="w3-panel w3-amber" v-if="isConnecting">
-        <h3>Bitte warten …</h3>
-        <p>Verbindung mit Server wird hergestellt …</p>
-    </div>
     <div class="w3-bar w3-black" v-if="isLocal">
         <button class="w3-bar-item w3-button" v-on:click="openTab('data')">Daten</button>
         <button class="w3-bar-item w3-button" v-on:click="openTab('uhs')" v-if="haveBeds">UHS Belegung</button>
@@ -432,6 +427,14 @@ $(document).ready(function(){
                     <button class="w3-green w3-button" v-on:click="dischargePatient()">Entlassen</button>
                     <button class="w3-red w3-button" v-on:click="hideDischargePatient()">Abbrechen</button>
                 </div>
+            </div>
+        </div>
+    </div>
+    <div class="w3-modal" id="please-wait-modal">
+        <div class="w3-modal-content w3-amber">
+            <div class="w3-panel">
+                <h3>Bitte warten …</h3>
+                <p>Verbindung mit Server wird hergestellt …</p>
             </div>
         </div>
     </div>
