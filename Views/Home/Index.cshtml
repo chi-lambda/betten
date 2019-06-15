@@ -31,6 +31,10 @@ $(document).ready(function(){
             disciplines: ['Internistisch', 'Chirurgisch', 'Neuro/Psych', 'Sonstige'],
             editPatient: null,
             isConnecting: true,
+            dischargePatientParameters: {
+                id: null,
+                dischargedBy: null
+            },
         },
         computed: {
             haveBeds: function() {
@@ -127,7 +131,21 @@ $(document).ready(function(){
             toggleTransported: function(patient) {
                 patient.transported = !patient.transported;
                 ws.send(JSON.stringify({Command: 'ToggleTransported', Parameters: [patient.id]}));
-            }
+            },
+            showDischargePatient: function(patient) {
+                this.dischargePatientParameters.id = patient.id;
+                this.dischargePatientParameters.dischargedBy = null;
+                $('#discharge-patient-modal').show();
+            },
+            dischargePatient: function() {
+                ws.send(JSON.stringify({Command: 'DischargePatient', Parameters: [this.dischargePatientParameters]}));
+                this.hideDischargePatient();
+            },
+            hideDischargePatient: function() {
+                this.dischargePatientParameters.id = null;
+                this.dischargePatientParameters.dischargedBy = null;
+                $('#discharge-patient-modal').hide();
+            },
         }
         });
 
@@ -285,8 +303,9 @@ $(document).ready(function(){
                     <td v-bind:class="patient.bed.sk.colorClass">{{ patient.bed.name }}</td>
                     <td>{{ patient.admission }}</td>
                     <td><button v-bind:class="{'w3-button': true, 'w3-gray': !patient.transported, 'w3-red': patient.transported}" v-on:click="toggleTransported(patient)" v-bind:disabled="patient.discharge != null && patient.discharge != ''">{{ patient.transported ? 'ja' : 'nein' }}</button>
-                    <td>{{ patient.discharge }}</td>
-                    <td>{{ patient.dischargedBy }}</td>
+                    <td v-if="patient.discharge != null && patient.discharge != ''">{{ patient.discharge }}</td>
+                    <td v-if="patient.discharge != null && patient.discharge != ''">{{ patient.dischargedBy }}</td>
+                    <td v-if="patient.discharge == null || patient.discharge == ''" colspan="2"><button v-on:click="showDischargePatient(patient)" class="w3-button w3-green">Entlassen</button></td>
                     <td><button disabled="disabled" class="w3-button" v-if="patient.comment">Kommentar</button>
                 </tr>
             </tbody>
@@ -397,6 +416,21 @@ $(document).ready(function(){
                     <button class="w3-button w3-green" v-on:click="savePatient()" v-bind:disabled="!canSavePatient(editPatient)">Speichern</button>
                     <button class="w3-button w3-gray" v-on:click="hideEditPatient()">Abbrechen</button>
                 </footer>
+            </div>
+        </div>
+        <div class="w3-modal" id="discharge-patient-modal">
+            <div class="w3-modal-content">
+                <header class="w3-container w3-blue">
+                  <h2>Patient entlassen</h2>
+                </header>
+                <div class="w3-panel">
+                    <label>Entlassungsart</label>
+                    <input v-model="dischargePatientParameters.dischargedBy" type="text" class="w3-input" />
+                </div>
+                <div class="w3-pane">
+                    <button class="w3-green w3-button" v-on:click="dischargePatient()">Entlassen</button>
+                    <button class="w3-red w3-button" v-on:click="hideDischargePatient()">Abbrechen</button>
+                </div>
             </div>
         </div>
     </div>

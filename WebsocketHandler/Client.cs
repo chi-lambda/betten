@@ -55,6 +55,9 @@ namespace betten.WebsocketHandler
                         case "ToggleTransported":
                             await ToggleTransported(commandMessage.Parameters);
                             break;
+                        case "DischargePatient":
+                            await DischargePatient(commandMessage.Parameters);
+                            break;
                         default:
                             Console.WriteLine("Unknown message '{0}'", commandMessage.Command);
                             break;
@@ -191,15 +194,27 @@ namespace betten.WebsocketHandler
         private async Task ToggleTransported(object[] parameters)
         {
             if (!isLocal) { return; }
-            Console.WriteLine("Is local");
-            Console.WriteLine("parameters.Length = {0}", parameters.Length);
             if (parameters.Length < 1) { return; }
-            Console.WriteLine("parameters[0].GetType() = {0}", parameters[0].GetType());
             if (!(parameters[0] is long)) { return; }
             var patientId = (long)parameters[0];
             var patient = await dbContext.Patients.FirstOrDefaultAsync(p => p.Id == patientId);
-            if(patient == null) {return;}
+            if (patient == null) { return; }
             patient.Transported = !patient.Transported;
+            await dbContext.SaveChangesAsync();
+            await handler.BroadcastPatients();
+        }
+
+        private async Task DischargePatient(object[] parameters)
+        {
+            if (!isLocal) { return; }
+            var param = parameters
+               .Cast<JObject>()
+               .Select(o => o.ToObject<DischargePatientParameters>())
+               .First();
+            var patient = await dbContext.Patients.FirstOrDefaultAsync(p => p.Id == param.Id);
+            if (patient == null) { return; }
+            patient.DischargedBy = param.DischargedBy;
+            patient.Discharge = DateTime.Now.ToString("HH:mm");
             await dbContext.SaveChangesAsync();
             await handler.BroadcastPatients();
         }
