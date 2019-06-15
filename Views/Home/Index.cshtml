@@ -70,9 +70,9 @@ $(document).ready(function(){
                 this.currentTab = tabName
             },
             colorForPatient: function(patient) {
-                if (patient.discharge != null && patient.discharge != '') { return '' }
                 if (patient.skId == null || patient.skId == '') { return '' }
-                return this.treatmentTypes.find(tt => tt.id == patient.skId).colorClass;
+                let pale = patient.discharge != null && patient.discharge != '';
+                return pale ? patient.sk.paleColorClass : patient.sk.colorClass;
             },
             patientForBed: function(bed) {
                 let patients = this.patients.filter(p => p.BedId == bed.id && (p.discharge == null || p.discharge == ''));
@@ -167,6 +167,7 @@ $(document).ready(function(){
             for (let patient of patients) {
                 patient.bed = vue.beds.find(b => b.id == patient.BedId);
                 patient.skId = patient.bed.SKId;
+                patient.sk = vue.treatmentTypes.find(tt => tt.id == patient.skId);
             }
             vue.patients = patients;
         }
@@ -298,9 +299,9 @@ $(document).ready(function(){
                     <td>{{ patient.firstName }}</td>
                     <td>{{ patient.gender }}</td>
                     <td>{{ patient.birth }}</td>
-                    <td v-bind:class="patient.bed.sk.colorClass">{{ patient.bed.sk.name }}</td>
+                    <td v-bind:class="colorForPatient(patient)">{{ patient.bed.sk.name }}</td>
                     <td>{{ patient.discipline }}</td>
-                    <td v-bind:class="patient.bed.sk.colorClass">{{ patient.bed.name }}</td>
+                    <td v-bind:class="colorForPatient(patient)">{{ patient.bed.name }}</td>
                     <td>{{ patient.admission }}</td>
                     <td><button v-bind:class="{'w3-button': true, 'w3-gray': !patient.transported, 'w3-red': patient.transported}" v-on:click="toggleTransported(patient)" v-bind:disabled="patient.discharge != null && patient.discharge != ''">{{ patient.transported ? 'ja' : 'nein' }}</button>
                     <td v-if="patient.discharge != null && patient.discharge != ''">{{ patient.discharge }}</td>
