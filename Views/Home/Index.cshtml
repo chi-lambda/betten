@@ -270,7 +270,10 @@ $(document).ready(function(){
     </div>
     <div id="patients" v-show="isLocal && currentTab == 'patients'">
         <h2>Patientendaten</h2>
-        <table class="w3-table w3-striped w3-hover w3-responsive w3-small">
+        <div class="w3-panel">
+            <button v-on:click="showAddPatient()" class="w3-button w3-green"><i class="fas fa-plus-square"></i> Neuer Patient</button>
+        </div>
+        <table class="w3-table w3-striped w3-hover w3-responsive w3-small w3-card-4">
             <thead>
                 <tr class="w3-gray">
                     <th v-on:click="sortPatients('id')" >Lfd. Nr.<i class="fas fa-caret-up" v-if="this.patientSortKey == 'id'"></i><i class="fas fa-caret-down" v-if="this.patientSortKey == '-id'"></i></th>
@@ -289,9 +292,6 @@ $(document).ready(function(){
                 </tr>
             </thead>
             <tbody>
-                <tr class="w3-card-4">
-                    <td colspan="13"><button v-on:click="showAddPatient()" class="w3-button w3-green"><i class="fas fa-plus-square"></i> Neuer Patient</button></td>
-                </tr>
                 <tr v-for="patient in sortedPatients">
                     <td><button class="w3-button w3-blue" title="Bearbeiten" v-on:click="showEditPatient(patient)">{{ patient.patientNumber }}</button></td>
                     <td>{{ patient.name }}</td>
