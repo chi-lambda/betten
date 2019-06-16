@@ -73,17 +73,12 @@ namespace betten
 
             app.Use(async (context, next) =>
             {
-                foreach (var header in context.Request.Headers)
-                {
-                    Console.WriteLine("{0}: {1}", header.Key, header.Value);
-                }
                 if (context.Request.Path == "/ws")
                 {
                     if (context.WebSockets.IsWebSocketRequest)
                     {
                         var webSocket = await context.WebSockets.AcceptWebSocketAsync();
                         var isLocal = context.Connection.RemoteIpAddress.Equals(IPAddress.Loopback);
-                        Console.WriteLine("Local connection: {0}", isLocal);
                         await wsHandler.AddClient(context, webSocket, isLocal);
                     }
                     else

@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using betten.Models;
-using Newtonsoft.Json;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using betten.Utils;
+using betten.Model;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace betten.Controllers
 {
@@ -18,15 +15,15 @@ namespace betten.Controllers
             return View();
         }
 
-        public IActionResult Privacy()
+        public async Task<IActionResult> Export(int id)
         {
-            return View();
-        }
-
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            var dbContext = new BettenContext();
+            ExcelExporter excelExporter = new ExcelExporter(dbContext, id);
+            var evt = dbContext.Events.First(e => e.Id == id);
+            return File(
+                await excelExporter.Export(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                 $"{evt.Title} {evt.Date}.xlsx");
         }
     }
 }

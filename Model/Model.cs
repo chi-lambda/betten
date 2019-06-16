@@ -32,7 +32,7 @@ namespace betten.Model
         [JsonProperty("title")]
         public string Title { get; set; }
         [JsonProperty("date")]
-        public DateTime Date { get; set; }
+        public string Date { get; set; }
         [JsonProperty("stationHead")]
         public string StationHead { get; set; }
         [JsonProperty("physician")]
