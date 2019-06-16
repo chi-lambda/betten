@@ -178,6 +178,16 @@ $(document).ready(function(){
             }
             vue.beds = beds;
         }
+        let events = json['events'];
+        if (events) {
+            vue.infos = [
+                {title: "Einsatz", content: events[0].title},
+                {title: "Datum", content: events[0].date},
+                {title: "Stationsleitung", content: events[0].stationHead},
+                {title: "Medizinischer Leiter/(Not-)Arzt", content: events[0].physician},
+                {title: "Dokumentations&shy;verantwortliche/r", content: events[0].documenter},
+            ];
+        }
     }
 
     let ws;
@@ -431,7 +441,7 @@ $(document).ready(function(){
         </div>
     </div>
     <div class="w3-modal" id="please-wait-modal">
-        <div class="w3-modal-content w3-amber">
+        <div class="w3-modal-content w3-amber w3-card-4">
             <div class="w3-panel">
                 <h3>Bitte warten …</h3>
                 <p>Verbindung mit Server wird hergestellt …</p>

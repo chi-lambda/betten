@@ -40,6 +40,7 @@ namespace betten.WebsocketHandler
                             await SendSKs();
                             break;
                         case "GetInitialData":
+                            await SendEvents();
                             await SendHelpers();
                             await SendPatients();
                             break;
@@ -134,6 +135,21 @@ namespace betten.WebsocketHandler
             }
         }
 
+        private async Task SendEvents()
+        {
+            var events = new Dictionary<string, Event[]>() { { "events", dbContext.Events.ToArray() } };
+            var eventsString = JsonConvert.SerializeObject(events);
+            var sendBytes = Encoding.UTF8.GetBytes(eventsString);
+            try
+            {
+                await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            catch
+            {
+                Disconnect();
+            }
+        }
+
         private async Task UpsertHelpers(object[] parameters)
         {
             if (!isLocal) { return; }
@@ -218,7 +234,6 @@ namespace betten.WebsocketHandler
             await dbContext.SaveChangesAsync();
             await handler.BroadcastPatients();
         }
-
         private async void Disconnect()
         {
             try
