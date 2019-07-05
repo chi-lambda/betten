@@ -12,6 +12,8 @@ namespace betten.WebsocketHandler
         private ICollection<Client> Clients = new List<Client>();
         private BettenContext dbContext = new BettenContext();
 
+        public int EventId { get; private set; } = 1;
+
         public async Task AddClient(HttpContext httpContext, WebSocket webSocket, bool isLocal)
         {
             var client = new Client(httpContext, dbContext, webSocket, this, isLocal);
@@ -49,6 +51,23 @@ namespace betten.WebsocketHandler
             foreach (var client in Clients.ToArray())
             {
                 await client.SendBeds();
+            }
+        }
+        public async Task BroadcastEvents()
+        {
+            foreach (var client in Clients.ToArray())
+            {
+                await client.SendEvents();
+                await client.SendPatients();
+            }
+        }
+
+        public async Task SetEventId(int eventId)
+        {
+            this.EventId = eventId;
+            foreach (var client in Clients.ToArray())
+            {
+                await client.SendEventId();
             }
         }
     }

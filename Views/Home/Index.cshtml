@@ -11,21 +11,17 @@ $(document).ready(function(){
     var vue = new Vue({
         el: '#vueapp',
         data: {
-            infos: [
-                {title: "Einsatz", content: ""},
-                {title: "Datum", content: ""},
-                {title: "Stationsleitung", content: ""},
-                {title: "Medizinischer Leiter/(Not-)Arzt", content: ""},
-                {title: "Dokumentations&shy;verantwortliche/r", content: ""},
-            ],
+            events: [],
+            eventId: null,
+            newEvent: { title: null, date: null },
             treatmentTypes: [],
             beds: [],
             patients: [],
             helpers: [],
-            newPatient: {name: null, firstName: null, gender: null, birth: null, sk: null, discipline: null, bed: null, admission: null, discharge: null, dischargedBy: null, EventId: 1},
+            newPatient: {name: null, firstName: null, gender: null, birth: null, sk: null, discipline: null, bed: null, admission: null, discharge: null, dischargedBy: null, EventId: null},
             newHelper: {name: null},
             isLocal: @ViewData["IsLocal"].ToString().ToLower(),
-            currentTab: 'data',
+            currentTab: @ViewData["IsLocal"].ToString().ToLower() ? 'events' : 'data',
             patientSortKey: 'id',
             genders: ['m', 'w', 'd', 'unbekannt'],
             disciplines: ['Internistisch', 'Chirurgisch', 'Neuro/Psych', 'Sonstige'],
@@ -47,7 +43,10 @@ $(document).ready(function(){
                 }
             },
             canAddPatient: function() {
-                return this.newPatient.sk != null && this.newPatient.bed != null
+                return this.newPatient.SkId != null && this.newPatient.BedId != null
+            },
+            currentEvent: function() {
+                return this.eventId ? this.events.find(e => e.id == this.eventId) : null;
             },
         },
         methods: {
@@ -57,7 +56,7 @@ $(document).ready(function(){
             },
             addPatient: function() {
                 this.patients.push(
-                    {name: this.newPatient.name, firstName: this.newPatient.firstName, gender: this.newPatient.gender, birth: this.newPatient.birth, sk: this.newPatient.sk, discipline: this.newPatient.discipline, bed: this.newPatient.bed, admission: this.newPatient.admission, discharge: this.newPatient.discharge, dischargedBy: this.newPatient.dischargedBy, EventId: 1});
+                    {name: this.newPatient.name, firstName: this.newPatient.firstName, gender: this.newPatient.gender, birth: this.newPatient.birth, skId: this.newPatient.skId, discipline: this.newPatient.discipline, bed: this.newPatient.bed, admission: this.newPatient.admission, discharge: this.newPatient.discharge, dischargedBy: this.newPatient.dischargedBy, EventId: this.eventId});
                 ws.send(JSON.stringify({Command: 'UpsertPatients', Parameters: [this.newPatient]}));
                 this.hideAddPatient();
             },
@@ -71,7 +70,8 @@ $(document).ready(function(){
             colorForPatient: function(patient) {
                 if (patient.skId == null || patient.skId == '') { return '' }
                 let pale = patient.discharge != null && patient.discharge != '';
-                return pale ? patient.sk.paleColorClass : patient.sk.colorClass;
+                let sk = this.treatmentTypes.find(tt => tt.id == patient.skId);
+                return pale ? sk.paleColorClass : sk.colorClass;
             },
             patientForBed: function(bed) {
                 let patients = this.patients.filter(p => p.BedId == bed.id && (p.discharge == null || p.discharge == ''));
@@ -86,7 +86,7 @@ $(document).ready(function(){
                 }
             },
             addHelper: function() {
-                this.helpers.push({name: this.newHelper.name, EventId: 1});
+                this.helpers.push({name: this.newHelper.name, EventId: this.eventId});
                 ws.send(JSON.stringify({Command: 'UpsertHelpers', Parameters: this.helpers}));
                 this.newHelper.name = null;
             },
@@ -145,6 +145,26 @@ $(document).ready(function(){
                 this.dischargePatientParameters.dischargedBy = null;
                 $('#discharge-patient-modal').hide();
             },
+            setEvent: function(eventId) {
+                this.eventId = eventId;
+                ws.send(JSON.stringify({Command: 'SetEvent', Parameters: [eventId]}));
+                this.currentTab = 'data';
+            },
+            saveEvent: function(event) {
+                ws.send(JSON.stringify({Command: 'UpsertEvents', Parameters: [event]}));
+            },
+            createEvent: function() {
+                ws.send(JSON.stringify({Command: 'UpsertEvents', Parameters: [this.newEvent]}));
+                this.cancelCreateEvent();
+            },
+            cancelCreateEvent: function() {
+                this.newEvent.title = null;
+                this.newEvent.date = null;
+                $('#new-event-modal').hide();
+            },
+            showCreateEvent: function() {
+                $('#new-event-modal').show();
+            },
         }
         });
 
@@ -180,19 +200,17 @@ $(document).ready(function(){
         }
         let events = json['events'];
         if (events) {
-            vue.infos = [
-                {title: "Einsatz", content: events[0].title},
-                {title: "Datum", content: events[0].date},
-                {title: "Stationsleitung", content: events[0].stationHead},
-                {title: "Medizinischer Leiter/(Not-)Arzt", content: events[0].physician},
-                {title: "Dokumentations&shy;verantwortliche/r", content: events[0].documenter},
-            ];
+            vue.events = events;
+        }
+        let eventId = json['eventId'];
+        if (eventId) {
+            vue.eventId = json['eventId'];
         }
     }
 
     let ws;
     function connectWs() {
-        ws = new WebSocket("wss://" + location.host + "/ws");
+        ws = new WebSocket("ws://" + location.host + "/ws");
         ws.onopen = function() {
             $('#please-wait-modal').hide();
             ws.send(JSON.stringify({Command: "GetInitialData"}));
@@ -212,19 +230,38 @@ $(document).ready(function(){
 <div id="vueapp">
 
     <div class="w3-bar w3-black" v-if="isLocal">
-        <button class="w3-bar-item w3-button" v-on:click="openTab('data')">Daten</button>
-        <button class="w3-bar-item w3-button" v-on:click="openTab('uhs')" v-if="haveBeds">UHS Belegung</button>
-        <button class="w3-bar-item w3-button" v-on:click="openTab('patients')" v-if="haveBeds">Patienten</button>
+        <button class="w3-bar-item w3-button w3-blue" v-on:click="openTab('data')" v-if="events.length > 0 && eventId">Daten</button>
+        <button class="w3-bar-item w3-button w3-blue" v-on:click="openTab('uhs')" v-if="haveBeds && events.length > 0 && eventId">UHS Belegung</button>
+        <button class="w3-bar-item w3-button w3-blue" v-on:click="openTab('patients')" v-if="haveBeds && events.length > 0 && eventId">Patienten</button>
+        <button class="w3-bar-item w3-button w3-blue w3-right" v-on:click="currentTab = 'events'">Einsatz wechseln</button>
+        <div class="w3-bar-item w3-right" v-if="currentEvent">{{ currentEvent.title }} ({{ currentEvent.date }})</div>
     </div> 
-    <div id="data" v-show="isLocal && currentTab == 'data'" class="w3-container">
-        <div class="w3-half">
+    <div id="data" v-show="isLocal && currentTab == 'data'" class="w3-container" v-if="currentEvent">
+        <div class="w3-card-4 w3-half">
             <h1>Einsatzdaten</h1>
-            <table class="w3-card-4 w3-table">
-                <tr v-for="info in infos">
-                    <td v-html="info.title + ':'"></td>
-                    <td><input class="w3-input" type="text" v-model="info.content"></td>
+            <table class="w3-table">
+                <tr>
+                    <td>Einsatz:</td>
+                    <td><input class="w3-input" type="text" v-model="currentEvent.title"></td>
+                </tr>
+                <tr>
+                    <td>Datum:</td>
+                    <td><input class="w3-input" type="text" v-model="currentEvent.date"></td>
+                </tr>
+                <tr>
+                    <td>Stationsleitung:</td>
+                    <td><input class="w3-input" type="text" v-model="currentEvent.stationHead"></td>
+                </tr>
+                <tr>
+                    <td>Medizinischer Leiter/(Not-)Arzt:</td>
+                    <td><input class="w3-input" type="text" v-model="currentEvent.physician"></td>
+                </tr>
+                <tr>
+                    <td>Dokumentations­verantwortliche/r:</td>
+                    <td><input class="w3-input" type="text" v-model="currentEvent.documenter"></td>
                 </tr>
             </table>
+            <button class="w3-button w3-green w3-right w3-margin" v-on:click="saveEvent(currentEvent)">Speichern</button>
         </div>
         <div class="w3-container w3-half">
             <h2>Betten</h2>
@@ -270,6 +307,26 @@ $(document).ready(function(){
                     <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass">{{ b.occupied ? 'belegt' : 'frei' }}</td>
                     <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass">{{ b.patientNumber }}</td>
                     <td v-bind:class="!b.occupied ? b.treatmentType.paleColorClass : b.treatmentType.colorClass"><i v-bind:class="{ 'fas': true, 'fa-check-square': b.transported }" /></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div id="events" v-show="isLocal && currentTab == 'events'" class="w3-container">
+        <h2>Einsätze</h2>
+        <div class="w3-panel"><button class="w3-button w3-green" v-on:click="showCreateEvent()">Neuer Einsatz</button></div>
+        <table class="w3-table w3-striped">
+            <thead>
+                <tr class="w3-gray">
+                    <th>Ort</th>
+                    <th>Datum</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="event in events">
+                    <td>{{ event.title }}</td>
+                    <td>{{ event.date }}</td>
+                    <td><button v-on:click="setEvent(event.id)" class="w3-button w3-blue">Auswählen</button></td>
                 </tr>
             </tbody>
         </table>
@@ -434,10 +491,29 @@ $(document).ready(function(){
                     <label>Entlassungsart</label>
                     <input v-model="dischargePatientParameters.dischargedBy" type="text" class="w3-input" />
                 </div>
-                <div class="w3-pane">
+                <div class="w3-panel">
                     <button class="w3-green w3-button" v-on:click="dischargePatient()">Entlassen</button>
                     <button class="w3-red w3-button" v-on:click="hideDischargePatient()">Abbrechen</button>
                 </div>
+            </div>
+        </div>
+    </div>
+    <div class="w3-modal" id="new-event-modal">
+        <div class="w3-modal-content">
+            <header class="w3-container w3-blue">
+              <h2>Neuer Einsatz</h2>
+            </header>
+            <div class="w3-panel">
+                <label>Ort:</label>
+                <input v-model="newEvent.title" type="text" class="w3-input" />
+            </div>
+            <div class="w3-panel">
+                <label>Datum:</label>
+                <input v-model="newEvent.date" type="text" class="w3-input" />
+            </div>
+            <div class="w3-panel">
+                <button class="w3-green w3-button" v-on:click="createEvent()">Einsatz anlegen</button>
+                <button class="w3-red w3-button" v-on:click="cancelCreateEvent()">Abbrechen</button>
             </div>
         </div>
     </div>

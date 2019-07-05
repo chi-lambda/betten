@@ -59,6 +59,12 @@ namespace betten.WebsocketHandler
                         case "DischargePatient":
                             await DischargePatient(commandMessage.Parameters);
                             break;
+                        case "UpsertEvents":
+                            await UpsertEvents(commandMessage.Parameters);
+                            break;
+                        case "SetEvent":
+                            await SetEvent(commandMessage.Parameters);
+                            break;
                         default:
                             Console.WriteLine("Unknown message '{0}'", commandMessage.Command);
                             break;
@@ -73,7 +79,16 @@ namespace betten.WebsocketHandler
 
         private async Task SendSKs()
         {
-            var sks = new Dictionary<string, SK[]>() { { "sks", dbContext.SK.Include(sk => sk.Beds).ToArray() } };
+            var sksWithAllBeds = dbContext.SK
+                .Include(sk => sk.Beds)
+                .ToArray();
+            foreach (var skWithBed in sksWithAllBeds)
+            {
+                skWithBed.Beds = skWithBed.Beds.ToList();
+            }
+            var sks = new Dictionary<string, SK[]>() { {
+                "sks", sksWithAllBeds
+            } };
             var skString = JsonConvert.SerializeObject(sks);
             var sendBytes = Encoding.UTF8.GetBytes(skString);
             try
@@ -89,7 +104,9 @@ namespace betten.WebsocketHandler
         public async Task SendHelpers()
         {
             if (!isLocal) { return; }
-            var helpers = new Dictionary<string, Helper[]>() { { "helpers", dbContext.Helpers.ToArray() } };
+            var helpers = new Dictionary<string, Helper[]>() { {
+                "helpers", dbContext.Helpers.Where(h => h.EventId == handler.EventId).ToArray()
+            } };
             var helpersString = JsonConvert.SerializeObject(helpers);
             var sendBytes = Encoding.UTF8.GetBytes(helpersString);
             try
@@ -105,7 +122,9 @@ namespace betten.WebsocketHandler
         public async Task SendBeds()
         {
             await SendSKs();
-            var beds = new Dictionary<string, Bed[]>() { { "beds", dbContext.Beds.Include(b => b.Patients).ToArray() } };
+            var beds = new Dictionary<string, Bed[]>() { {
+                 "beds", dbContext.Beds.Include(b => b.Patients).Where(b => b.EventId == handler.EventId).ToArray()
+            } };
             var bedsString = JsonConvert.SerializeObject(beds);
             var sendBytes = Encoding.UTF8.GetBytes(bedsString);
             try
@@ -122,7 +141,9 @@ namespace betten.WebsocketHandler
         {
             await SendBeds();
             if (!isLocal) { return; }
-            var patients = new Dictionary<string, Patient[]>() { { "patients", dbContext.Patients.ToArray() } };
+            var patients = new Dictionary<string, Patient[]>() { {
+                 "patients", dbContext.Patients.Where(p => p.EventId == handler.EventId).ToArray()
+            } };
             var patientsString = JsonConvert.SerializeObject(patients);
             var sendBytes = Encoding.UTF8.GetBytes(patientsString);
             try
@@ -135,9 +156,12 @@ namespace betten.WebsocketHandler
             }
         }
 
-        private async Task SendEvents()
+        public async Task SendEvents()
         {
-            var events = new Dictionary<string, Event[]>() { { "events", dbContext.Events.ToArray() } };
+            await SendEventId();
+            var events = isLocal
+                ? new Dictionary<string, Event[]>() { { "events", dbContext.Events.ToArray() } }
+                : new Dictionary<string, Event[]>() { { "events", dbContext.Events.Where(e => e.Id == handler.EventId).ToArray() } };
             var eventsString = JsonConvert.SerializeObject(events);
             var sendBytes = Encoding.UTF8.GetBytes(eventsString);
             try
@@ -171,7 +195,10 @@ namespace betten.WebsocketHandler
                 .Select(o => o.ToObject<Patient>())
                 .Where(p => p.Id == 0)
                 .ToArray();
-            var patientNumber = await dbContext.Patients.Select(p => p.PatientNumber).MaxAsync() ?? 0;
+            var patientNumber = await dbContext.Patients
+                .Where(p => newPatients[0].EventId == p.EventId)
+                .Select(p => p.PatientNumber)
+                .MaxAsync() ?? 0;
             foreach (var patient in newPatients)
             {
                 patientNumber++;
@@ -193,6 +220,30 @@ namespace betten.WebsocketHandler
             await handler.BroadcastPatients();
         }
 
+        private async Task UpsertEvents(object[] parameters)
+        {
+            if (!isLocal) { return; }
+            var newEvents = parameters
+                .Cast<JObject>()
+                .Select(o => o.ToObject<Event>())
+                .Where(p => p.Id == 0)
+                .ToArray();
+            await dbContext.Events.AddRangeAsync(newEvents);
+            var existingEvents = parameters
+                .Cast<JObject>()
+                .Select(o => o.ToObject<Event>())
+                .Where(p => p.Id != 0)
+                .ToDictionary(k => k.Id, v => v);
+            var existingIds = existingEvents.Keys;
+            var dbEvents = dbContext.Events.Where(p => existingIds.Contains(p.Id));
+            foreach (var evt in dbEvents)
+            {
+                evt.Update(existingEvents[evt.Id]);
+            }
+            await dbContext.SaveChangesAsync();
+            await handler.BroadcastEvents();
+        }
+
         private async Task CreateBeds(object[] parameters)
         {
             if (!isLocal) { return; }
@@ -200,7 +251,7 @@ namespace betten.WebsocketHandler
             var beds = parameters
                 .Cast<JObject>()
                 .Select(o => o.ToObject<CreateBedsParameter>())
-                .SelectMany(cbp => Enumerable.Range(1, cbp.Count).Select(i => new Bed() { SKId = cbp.Id, EventId = 1, Name = bedPrefixes[cbp.Id] + " " + i }))
+                .SelectMany(cbp => Enumerable.Range(1, cbp.Count).Select(i => new Bed() { SKId = cbp.Id, EventId = handler.EventId, Name = bedPrefixes[cbp.Id] + " " + i }))
                 .ToArray();
             await dbContext.Beds.AddRangeAsync(beds);
             await dbContext.SaveChangesAsync();
@@ -234,6 +285,27 @@ namespace betten.WebsocketHandler
             await dbContext.SaveChangesAsync();
             await handler.BroadcastPatients();
         }
+
+        private async Task SetEvent(object[] parameters)
+        {
+            var eventId = (int)parameters.Cast<long>().First();
+            await handler.SetEventId(eventId);
+        }
+
+        public async Task SendEventId()
+        {
+            var eventIdString = JsonConvert.SerializeObject(new { eventId = handler.EventId });
+            var sendBytes = Encoding.UTF8.GetBytes(eventIdString);
+            try
+            {
+                await webSocket.SendAsync(new ArraySegment<byte>(sendBytes, 0, sendBytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            catch
+            {
+                Disconnect();
+            }
+        }
+
         private async void Disconnect()
         {
             try

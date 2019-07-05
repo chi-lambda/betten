@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace betten.Model
@@ -15,9 +18,18 @@ namespace betten.Model
         public DbSet<Patient> Patients { get; set; }
         public DbSet<SK> SK { get; set; }
 
+        private static ConfigureNamedOptions<ConsoleLoggerOptions> configureNamedOptions = new ConfigureNamedOptions<ConsoleLoggerOptions>("", null);
+        private static OptionsFactory<ConsoleLoggerOptions> optionsFactory = new OptionsFactory<ConsoleLoggerOptions>(new[] { configureNamedOptions }, Enumerable.Empty<IPostConfigureOptions<ConsoleLoggerOptions>>());
+        private static OptionsMonitor<ConsoleLoggerOptions> optionsMonitor = new OptionsMonitor<ConsoleLoggerOptions>(optionsFactory, Enumerable.Empty<IOptionsChangeTokenSource<ConsoleLoggerOptions>>(), new OptionsCache<ConsoleLoggerOptions>());
+
+        public static readonly LoggerFactory loggerFactory
+            = new LoggerFactory(new[] { new ConsoleLoggerProvider(optionsMonitor) });
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.UseSqlite("Data Source=betten.sqlite");
+
+            optionsBuilder.UseLoggerFactory(loggerFactory);
         }
     }
 
@@ -46,6 +58,14 @@ namespace betten.Model
         public List<Bed> Beds { get; set; }
         [JsonIgnore]
         public List<Patient> Patients { get; set; }
+
+        public void Update(Event other)
+        {
+            this.Title = other.Title;
+            this.StationHead = other.StationHead;
+            this.Physician = other.Physician;
+            this.Date = other.Date;
+        }
     }
     public class Helper : Entity
     {
