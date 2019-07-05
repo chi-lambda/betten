@@ -63,6 +63,7 @@ namespace betten.WebsocketHandler
                             break;
                         case "SetEvent":
                             await SetEvent(commandMessage.Parameters);
+                            await handler.BroadcastPatients();
                             break;
                         default:
                             Console.WriteLine("Unknown message '{0}'", commandMessage.Command);
@@ -85,7 +86,7 @@ namespace betten.WebsocketHandler
                     .ToArray();
                 foreach (var skWithBed in sksWithAllBeds)
                 {
-                    skWithBed.Beds = skWithBed.Beds.ToList();
+                    skWithBed.Beds = skWithBed.Beds.Where(b => b.EventId == handler.EventId).ToList();
                 }
                 var sks = new Dictionary<string, SK[]>() { {
                 "sks", sksWithAllBeds
