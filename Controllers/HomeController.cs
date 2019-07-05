@@ -17,13 +17,15 @@ namespace betten.Controllers
 
         public async Task<IActionResult> Export(int id)
         {
-            var dbContext = new BettenContext();
-            ExcelExporter excelExporter = new ExcelExporter(dbContext, id);
-            var evt = dbContext.Events.First(e => e.Id == id);
-            return File(
-                await excelExporter.Export(),
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                 $"{evt.Title} {evt.Date}.xlsx");
+            using (var dbContext = new BettenContext())
+            {
+                ExcelExporter excelExporter = new ExcelExporter(dbContext, id);
+                var evt = dbContext.Events.First(e => e.Id == id);
+                return File(
+                    await excelExporter.Export(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                     $"{evt.Title} {evt.Date}.xlsx");
+            }
         }
     }
 }
