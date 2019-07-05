@@ -64,6 +64,7 @@ namespace betten.WebsocketHandler
                         case "SetEvent":
                             await SetEvent(commandMessage.Parameters);
                             await handler.BroadcastPatients();
+                            await handler.BroadcastHelpers();
                             break;
                         default:
                             Console.WriteLine("Unknown message '{0}'", commandMessage.Command);
@@ -187,6 +188,7 @@ namespace betten.WebsocketHandler
                     Disconnect();
                 }
             }
+            await SendHelpers();
         }
 
         private async Task UpsertHelpers(object[] parameters)

@@ -46,7 +46,7 @@ $(document).ready(function(){
                 return this.newPatient.SkId != null && this.newPatient.BedId != null
             },
             currentEvent: function() {
-                return this.eventId ? this.events.find(e => e.id == this.eventId) : null;
+                return this.events.find(e => e.id == this.eventId);
             },
         },
         methods: {
@@ -203,8 +203,11 @@ $(document).ready(function(){
             vue.events = events;
         }
         let eventId = json['eventId'];
-        if (eventId) {
+        if (eventId >= 0) {
             vue.eventId = json['eventId'];
+        }
+        if (!vue.currentEvent) {
+            vue.currentTab = 'events';
         }
     }
 

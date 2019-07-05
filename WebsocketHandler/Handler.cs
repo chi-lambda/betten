@@ -12,7 +12,7 @@ namespace betten.WebsocketHandler
         private ICollection<Client> Clients = new List<Client>();
         private BettenContext dbContext = new BettenContext();
 
-        public int EventId { get; private set; } = 1;
+        public int EventId { get; private set; }
 
         public async Task AddClient(HttpContext httpContext, WebSocket webSocket, bool isLocal)
         {
