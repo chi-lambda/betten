@@ -52,7 +52,7 @@ namespace betten
                 app.UseHsts();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
             app.UseStaticFiles();
 
             app.UseCookiePolicy();
@@ -78,7 +78,7 @@ namespace betten
                     if (context.WebSockets.IsWebSocketRequest)
                     {
                         var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                        var isLocal = context.Connection.RemoteIpAddress.Equals(IPAddress.Loopback);
+                        var isLocal = IPAddress.IsLoopback(context.Connection.RemoteIpAddress);
                         await wsHandler.AddClient(context, webSocket, isLocal);
                     }
                     else
