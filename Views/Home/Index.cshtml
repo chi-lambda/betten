@@ -55,6 +55,7 @@ $(document).ready(function(){
                 //$("#new-patient-birth").datepicker();
             },
             addPatient: function() {
+                this.newPatient.EventId = this.eventId;
                 this.patients.push(
                     {name: this.newPatient.name, firstName: this.newPatient.firstName, gender: this.newPatient.gender, birth: this.newPatient.birth, skId: this.newPatient.skId, discipline: this.newPatient.discipline, bed: this.newPatient.bed, admission: this.newPatient.admission, discharge: this.newPatient.discharge, dischargedBy: this.newPatient.dischargedBy, EventId: this.eventId});
                 ws.send(JSON.stringify({Command: 'UpsertPatients', Parameters: [this.newPatient]}));

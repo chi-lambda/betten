@@ -217,10 +217,12 @@ namespace betten.WebsocketHandler
                 .ToArray();
             using (var dbContext = new BettenContext())
             {
-                var patientNumber = await dbContext.Patients
-                    .Where(p => newPatients[0].EventId == p.EventId)
-                    .Select(p => p.PatientNumber)
-                    .MaxAsync() ?? 0;
+                var patientNumber = await dbContext.Patients.AnyAsync(p => newPatients[0].EventId == p.EventId)
+                    ? await dbContext.Patients
+                        .Where(p => newPatients[0].EventId == p.EventId)
+                        .Select(p => p.PatientNumber)
+                        .MaxAsync()
+                    : 0;
                 foreach (var patient in newPatients)
                 {
                     patientNumber++;
