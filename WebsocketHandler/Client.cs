@@ -217,30 +217,37 @@ namespace betten.WebsocketHandler
                 .ToArray();
             using (var dbContext = new BettenContext())
             {
-                var patientNumber = await dbContext.Patients.AnyAsync(p => newPatients[0].EventId == p.EventId)
-                    ? await dbContext.Patients
-                        .Where(p => newPatients[0].EventId == p.EventId)
-                        .Select(p => p.PatientNumber)
-                        .MaxAsync()
-                    : 0;
-                foreach (var patient in newPatients)
+                if (newPatients.Any())
                 {
-                    patientNumber++;
-                    patient.PatientNumber = patientNumber;
+                    var patientNumber = await dbContext.Patients.AnyAsync(p => newPatients[0].EventId == p.EventId)
+                        ? await dbContext.Patients
+                            .Where(p => newPatients[0].EventId == p.EventId)
+                            .Select(p => p.PatientNumber)
+                            .MaxAsync()
+                        : 0;
+                    foreach (var patient in newPatients)
+                    {
+                        patientNumber++;
+                        patient.PatientNumber = patientNumber;
+                    }
+                    await dbContext.Patients.AddRangeAsync(newPatients);
+                    await dbContext.SaveChangesAsync();
                 }
-                await dbContext.Patients.AddRangeAsync(newPatients);
                 var existingPatients = parameters
                     .Cast<JObject>()
                     .Select(o => o.ToObject<Patient>())
                     .Where(p => p.Id != 0)
                     .ToDictionary(k => k.Id, v => v);
-                var existingIds = existingPatients.Keys;
-                var dbPatients = dbContext.Patients.Where(p => existingIds.Contains(p.Id));
-                foreach (var patient in dbPatients)
+                if (existingPatients.Any())
                 {
-                    patient.Update(existingPatients[patient.Id]);
+                    var existingIds = existingPatients.Keys;
+                    var dbPatients = dbContext.Patients.Where(p => existingIds.Contains(p.Id));
+                    foreach (var patient in dbPatients)
+                    {
+                        patient.Update(existingPatients[patient.Id]);
+                    }
+                    await dbContext.SaveChangesAsync();
                 }
-                await dbContext.SaveChangesAsync();
             }
             await handler.BroadcastPatients();
         }
@@ -261,11 +268,17 @@ namespace betten.WebsocketHandler
             var existingIds = existingEvents.Keys;
             using (var dbContext = new BettenContext())
             {
-                await dbContext.Events.AddRangeAsync(newEvents);
-                var dbEvents = dbContext.Events.Where(p => existingIds.Contains(p.Id));
-                foreach (var evt in dbEvents)
+                if (newEvents.Any())
                 {
-                    evt.Update(existingEvents[evt.Id]);
+                    await dbContext.Events.AddRangeAsync(newEvents);
+                }
+                if (existingEvents.Any())
+                {
+                    var dbEvents = dbContext.Events.Where(p => existingIds.Contains(p.Id));
+                    foreach (var evt in dbEvents)
+                    {
+                        evt.Update(existingEvents[evt.Id]);
+                    }
                 }
                 await dbContext.SaveChangesAsync();
             }
