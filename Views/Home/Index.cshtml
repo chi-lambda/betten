@@ -240,6 +240,9 @@ $(document).ready(function(){
         <button class="w3-bar-item w3-button w3-blue w3-right" v-on:click="currentTab = 'events'">Einsatz wechseln</button>
         <div class="w3-bar-item w3-right" v-if="currentEvent">{{ currentEvent.title }} ({{ currentEvent.date }})</div>
     </div> 
+    <div class="w3-bar w3-black" v-if="!isLocal">
+        <div class="w3-bar-item w3-right" v-if="currentEvent">{{ currentEvent.title }} ({{ currentEvent.date }})</div>
+    </div> 
     <div id="data" v-show="isLocal && currentTab == 'data'" class="w3-container" v-if="currentEvent">
         <div class="w3-card-4 w3-half">
             <h1>Einsatzdaten</h1>
