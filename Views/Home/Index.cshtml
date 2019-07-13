@@ -6,6 +6,15 @@
 function range(size, startAt = 0) {
     return [...Array(size).keys()].map(i => i + startAt);
 }
+
+function pad(i) {
+    if (i < 10) {
+        return '0' + i;
+    } else {
+        return i;
+    }
+}
+
 $(document).ready(function(){
 
     var vue = new Vue({
@@ -107,7 +116,7 @@ $(document).ready(function(){
             showAddPatient: function() {
                 $('#add-patient-modal').show();
                 let now = new Date();
-                this.newPatient.admission = now.getHours() + ':' + now.getMinutes();
+                this.newPatient.admission = pad(now.getHours()) + ':' + pad(now.getMinutes());
             },
             hideAddPatient: function() {
                 $('#add-patient-modal').hide();
@@ -377,7 +386,7 @@ $(document).ready(function(){
                     <td v-if="patient.discharge != null && patient.discharge != ''">{{ patient.discharge }}</td>
                     <td v-if="patient.discharge != null && patient.discharge != ''">{{ patient.dischargedBy }}</td>
                     <td v-if="patient.discharge == null || patient.discharge == ''" colspan="2"><button v-on:click="showDischargePatient(patient)" class="w3-button w3-green">Entlassen</button></td>
-                    <td><button disabled="disabled" class="w3-button" v-if="patient.comment">Kommentar</button>
+                    <td v-bind:title="patient.comment">{{ patient.comment ? patient.comment.substring(0, 20) + (patient.comment.length > 20 ? '…' : '') : '' }}</button>
                 </tr>
             </tbody>
         </table>
@@ -428,6 +437,11 @@ $(document).ready(function(){
                         <label>Eingang:</label>
                         <input class="w3-input" type="text" v-model="newPatient.admission" />
                     </div>
+                    <div style="clear: both;"></div>
+                    <div>
+                        <label>Kommentar:</label>
+                        <input class="w3-input" type="text" v-model="newPatient.comment" style="height: 5em;" />
+                    </div>
                 </div>
                 <footer class="w3-container w3-padding-16">
                     <button class="w3-button w3-green" v-on:click="addPatient()" v-bind:disabled="!canSavePatient(newPatient)">Speichern</button>
@@ -462,7 +476,7 @@ $(document).ready(function(){
                     <div style="clear: both;"></div>
                     <div v-bind:class="colorForPatient(editPatient)" class="w3-half w3-container">
                         <label>SK:</label>
-                        <select v-model="editPatient.skId" class="w3-select" v-bind:class="colorForPatient(editPatient)">
+                        <select v-model="editPatient.skId" class="w3-select" v-bind:class="colorForPatient(editPatient)" v-bind:disabled="!!editPatient.discharge">
                             <option v-for="tt in treatmentTypes" v-bind:class="tt.colorClass" v-bind:value="tt.id">{{tt.name}}</option>
                         </select>
                     </div>
@@ -474,13 +488,18 @@ $(document).ready(function(){
                     </div>
                     <div class="w3-half w3-container">
                         <label>Platz:</label>
-                        <select v-model="editPatient.BedId" class="w3-select">
+                        <select v-model="editPatient.BedId" class="w3-select" v-bind:disabled="!!editPatient.discharge">
                             <option v-for="b in applicableBeds(editPatient)" v-bind:value="b.id">{{ b.name }}</option>
                         </select>
                     </div>
                     <div class="w3-half w3-container">
                         <label>Eingang:</label>
                         <input class="w3-input" type="text" v-model="editPatient.admission" />
+                    </div>
+                    <div style="clear: both;"></div>
+                    <div>
+                        <label>Kommentar:</label>
+                        <input class="w3-input" type="text" v-model="editPatient.comment" style="height: 5em;" />
                     </div>
                 </div>
                 <footer class="w3-container w3-padding-16">
